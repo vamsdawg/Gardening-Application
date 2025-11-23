@@ -1,11 +1,9 @@
-!pip install io
-!pip install os
-!pip install json
-!pip install sys
-!pip install subprocess
-!pip install lib
-
-# ---------- third-party !pip installs ----------
-!pip install streamlit
-!pip install numpy
-!pip install cv2
+io
+os
+json
+sys
+subprocess
+lib
+streamlit
+numpy
+cv2
