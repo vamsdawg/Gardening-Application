@@ -32,7 +32,7 @@ Image = PIL_module.Image
 
 np = install_and_import("numpy")                          # import numpy as np
 
-cv2 = install_and_import("opencv-python", "cv2")          # import cv2
+cv2 = install_and_import("opencv-python-headless", "cv2")  # import cv2
 
 # ---------- your local/project modules (no pip) ----------
 from plantnet_api import PlantNetAPI
@@ -42,7 +42,7 @@ from gemini_llm import PlantCareLLM
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Streamlit "Smart Garden Assistant" - Split UI for Lawn Care and Plant Care
-# Usage: pip install streamlit opencv-python pillow numpy tensorflow requests google-generativeai
+# Usage: pip install streamlit opencv-python-headless pillow numpy tensorflow requests google-generativeai
 # Run: streamlit run app.py
 
 st.set_page_config(page_title="Smart Garden Assistant", layout="wide", initial_sidebar_state="expanded")
