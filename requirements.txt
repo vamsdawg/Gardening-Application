@@ -1,9 +1,7 @@
-io
-os
-json
-sys
-subprocess
-lib
 streamlit
 numpy
-cv2
+opencv-python-headless
+Pillow
+tensorflow
+google-generativeai
+requests
