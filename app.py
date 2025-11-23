@@ -1,11 +1,40 @@
 import io
 import os
 from datetime import datetime, timezone
-import streamlit as st
-from PIL import Image
-import numpy as np
-import cv2
 import json
+import sys
+import subprocess
+import importlib
+
+# ---------- helper: pip install if missing ----------
+def install_and_import(package, import_name=None):
+    """
+    Install `package` via pip if not already installed,
+    then import and return the module.
+
+    `import_name` is the name used in `import` (e.g. 'PIL', 'cv2').
+    If omitted, it defaults to `package`.
+    """
+    import_name = import_name or package
+
+    try:
+        return importlib.import_module(import_name)
+    except ImportError:
+        print(f"{import_name} not found, installing {package}...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        return importlib.import_module(import_name)
+
+# ---------- third-party imports with auto-install ----------
+st = install_and_import("streamlit")                      # import streamlit as st
+
+PIL_module = install_and_import("Pillow", "PIL")          # from PIL import Image
+Image = PIL_module.Image
+
+np = install_and_import("numpy")                          # import numpy as np
+
+cv2 = install_and_import("opencv-python", "cv2")          # import cv2
+
+# ---------- your local/project modules (no pip) ----------
 from plantnet_api import PlantNetAPI
 from gemini_llm import PlantCareLLM
 
