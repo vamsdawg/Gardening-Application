@@ -1,11 +1,8 @@
-pip install -r requirements.txt
-
 import io
 import os
 from datetime import datetime, timezone
 import json
 import sys
-import subprocess
 import importlib
 
 # ---------- third-party imports ----------
@@ -13,6 +10,7 @@ import streamlit as st
 from PIL import Image
 import numpy as np
 import cv2
+import tensorflow as tf
 
 # ---------- your local/project modules (no pip) ----------
 from plantnet_api import PlantNetAPI
@@ -38,7 +36,6 @@ USE_LLM = True  # Set to True to enable LLM recommendations
 def load_plant_model():
     """Load the trained plant classification model"""
     try:
-        import tensorflow as tf
         model_path = 'models/plant_classifier.h5'
         class_indices_path = 'models/class_indices.json'
         
@@ -95,7 +92,6 @@ def percent_coverage(mask: np.ndarray):
 def classify_plant(image: np.ndarray, model, class_indices):
     """Classify the plant in the image using custom model"""
     try:
-        import tensorflow as tf
         # Preprocess image
         img_resized = cv2.resize(image, (224, 224))
         img_array = img_resized / 255.0
