@@ -3,7 +3,7 @@
 !pip install json
 !pip install sys
 !pip install subprocess
-!pip install !pip installlib
+!pip install lib
 
 # ---------- third-party !pip installs ----------
 !pip install streamlit
