@@ -314,6 +314,10 @@ if page == "Lawn Care":
     st.title("🏡 Lawn Care Analysis")
     st.write("Upload a photo of your lawn for health analysis and mowing recommendations.")
     
+    # Initialize session state for lawn analysis
+    if 'lawn_analyzed' not in st.session_state:
+        st.session_state.lawn_analyzed = False
+
     with st.sidebar:
         st.subheader("Lawn Care Options")
         lawn_segmentation_method = st.selectbox(
@@ -329,16 +333,26 @@ if page == "Lawn Care":
             placeholder="e.g., Brown patches appearing, want thicker grass...",
             key="lawn_prompt"
         )
-        lawn_submit = st.button("🔍 Analyze Lawn", key="lawn_submit")
     
-    lawn_uploaded = st.file_uploader(
-        "Upload lawn image (jpg/png)", 
-        type=["jpg", "jpeg", "png"],
-        key="lawn_upload"
-    )
+    # Show upload and analyze button only if not analyzed yet
+    if not st.session_state.lawn_analyzed:
+        lawn_uploaded = st.file_uploader(
+            "Upload lawn image (jpg/png)", 
+            type=["jpg", "jpeg", "png"],
+            key="lawn_upload",
+            accept_multiple_files=False
+        )
+        
+        if lawn_uploaded:
+            # Show analyze button only when image is uploaded
+            if st.button("🔍 Analyze Lawn", key="lawn_submit_main"):
+                st.session_state.lawn_analyzed = True
+                st.session_state.lawn_image = lawn_uploaded
+                st.rerun()
     
-    if lawn_uploaded:
-        image = Image.open(lawn_uploaded).convert("RGB")
+    # Show results if analyzed
+    if st.session_state.lawn_analyzed and 'lawn_image' in st.session_state:
+        image = Image.open(st.session_state.lawn_image).convert("RGB")
         arr = np.array(image)
         
         # Segmentation parameters
@@ -352,72 +366,81 @@ if page == "Lawn Care":
         else:
             lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
         
-        if lawn_submit:
-            with st.spinner("Analyzing lawn..."):
-                mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
-                overlay = overlay_mask(arr, mask, color=(0, 200, 0), alpha=0.45)
-                green_frac = percent_coverage(mask)
-                
-                gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-                brown_mask = (mask == 0) & (gray < 150)
-                brown_frac = int(100 * brown_mask.sum() / mask.size) / 100.0
-                
-                metrics = {
-                    "green_coverage_pct": f"{green_frac*100:.1f}%",
-                    "estimated_brown_pct": f"{brown_frac*100:.1f}%",
-                }
-                meta = {
-                    "last_mow_days": int(last_mow_days), 
-                    "season": lawn_season,
-                    "user_notes": lawn_prompt if lawn_prompt else "None"
-                }
-                
-                summary = lawn_rule_engine(
-                    green_frac, 
-                    last_mow_days, 
-                    brown_frac, 
-                    lawn_season,
-                    user_observation=lawn_prompt if lawn_prompt else ""
-                )
+        with st.spinner("Analyzing lawn..."):
+            mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
+            overlay = overlay_mask(arr, mask, color=(0, 200, 0), alpha=0.45)
+            green_frac = percent_coverage(mask)
             
-            # Display results
-            col1, col2 = st.columns([1, 1])
-            col1.image(image, caption="Original", use_container_width=True)
-            col2.image(overlay, caption="Green Coverage Analysis", use_container_width=True)
+            gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+            brown_mask = (mask == 0) & (gray < 150)
+            brown_frac = int(100 * brown_mask.sum() / mask.size) / 100.0
             
-            st.markdown("### 📊 Analysis Results")
-            st.write(f"**Green coverage:** {green_frac*100:.1f}%")
-            st.write(f"**Estimated brown/dry:** {brown_frac*100:.1f}%")
+            metrics = {
+                "green_coverage_pct": f"{green_frac*100:.1f}%",
+                "estimated_brown_pct": f"{brown_frac*100:.1f}%",
+            }
+            meta = {
+                "last_mow_days": int(last_mow_days), 
+                "season": lawn_season,
+                "user_notes": lawn_prompt if lawn_prompt else "None"
+            }
             
-            st.markdown("### 💡 Recommendations")
+            summary = lawn_rule_engine(
+                green_frac, 
+                last_mow_days, 
+                brown_frac, 
+                lawn_season,
+                user_observation=lawn_prompt if lawn_prompt else ""
+            )
+        
+        # Display results
+        col1, col2 = st.columns([1, 1])
+        col1.image(image, caption="Original", use_container_width=True)
+        col2.image(overlay, caption="Green Coverage Analysis", use_container_width=True)
+        
+        st.markdown("### 📊 Analysis Results")
+        st.write(f"**Green coverage:** {green_frac*100:.1f}%")
+        st.write(f"**Estimated brown/dry:** {brown_frac*100:.1f}%")
+        
+        st.markdown("### 💡 Recommendations")
+        
+        if USE_LLM and GEMINI_API_KEY:
+            # Display LLM-generated recommendations
+            st.markdown(summary)
             
-            if USE_LLM and GEMINI_API_KEY:
-                # Display LLM-generated recommendations
-                st.markdown(summary)
-                
-                if lawn_prompt:
-                    st.markdown("---")
-                    st.caption("💡 Your concerns were analyzed and incorporated into the recommendations above.")
-            else:
-                # Fallback when LLM is not configured
-                st.info(summary)
-                
-                if lawn_prompt:
-                    st.markdown("### 📝 Your Notes")
-                    st.write(lawn_prompt)
-                    st.info("💡 Enable LLM integration to get personalized analysis of your lawn concerns.")
+            if lawn_prompt:
+                st.markdown("---")
+                st.caption("💡 Your concerns were analyzed and incorporated into the recommendations above.")
+        else:
+            # Fallback when LLM is not configured
+            st.info(summary)
             
-            # Downloads
-            mask_pil = Image.fromarray(mask)
-            buf_mask = io.BytesIO()
-            mask_pil.save(buf_mask, format="PNG")
-            st.download_button("Download mask", data=buf_mask.getvalue(), file_name="lawn_mask.png", mime="image/png")
-            
-            report = make_report_text(summary, metrics, meta, "Lawn Care")
-            st.download_button("Download report", data=report, file_name="lawn_report.txt", mime="text/plain")
+            if lawn_prompt:
+                st.markdown("### 📝 Your Notes")
+                st.write(lawn_prompt)
+                st.info("💡 Enable LLM integration to get personalized analysis of your lawn concerns.")
+        
+        # Downloads
+        mask_pil = Image.fromarray(mask)
+        buf_mask = io.BytesIO()
+        mask_pil.save(buf_mask, format="PNG")
+        st.download_button("Download mask", data=buf_mask.getvalue(), file_name="lawn_mask.png", mime="image/png")
+        
+        report = make_report_text(summary, metrics, meta, "Lawn Care")
+        st.download_button("Download report", data=report, file_name="lawn_report.txt", mime="text/plain")
+        
+        st.markdown("---")
+        if st.button("🔄 Analyze Another Photo", key="lawn_reset"):
+            st.session_state.lawn_analyzed = False
+            del st.session_state.lawn_image
+            st.rerun()
 
 elif page == "Plant Care":
     st.title("🌱 Plant Species Identification")
+    
+    # Initialize session state for plant analysis
+    if 'plant_analyzed' not in st.session_state:
+        st.session_state.plant_analyzed = False
     
     # Check which identification method to use
     if USE_PLANTNET and PLANTNET_API_KEY:
@@ -453,157 +476,171 @@ elif page == "Plant Care":
             key="plant_prompt",
             help="Your observations will be used for personalized recommendations once LLM integration is complete."
         )
-        plant_submit = st.button("🔍 Identify Plant", key="plant_submit")
     
-    plant_uploaded = st.file_uploader(
-        "Upload plant image (jpg/png)", 
-        type=["jpg", "jpeg", "png"],
-        key="plant_upload"
-    )
+    # Show upload and analyze button only if not analyzed yet
+    if not st.session_state.plant_analyzed:
+        plant_uploaded = st.file_uploader(
+            "Upload plant image (jpg/png)", 
+            type=["jpg", "jpeg", "png"],
+            key="plant_upload",
+            accept_multiple_files=False
+        )
+        
+        if plant_uploaded:
+            if st.button("🔍 Identify Plant", key="plant_submit_main"):
+                st.session_state.plant_analyzed = True
+                st.session_state.plant_image = plant_uploaded
+                st.rerun()
     
-    if plant_uploaded:
-        image = Image.open(plant_uploaded).convert("RGB")
+    # Show results if analyzed
+    if st.session_state.plant_analyzed and 'plant_image' in st.session_state:
+        image = Image.open(st.session_state.plant_image).convert("RGB")
         arr = np.array(image)
         
-        if plant_submit:
-            # Determine which API key to use
-            active_api_key = st.session_state.get('plantnet_key', PLANTNET_API_KEY)
-            use_plantnet_now = USE_PLANTNET and active_api_key
-            
-            with st.spinner("Identifying plant..."):
-                if use_plantnet_now:
-                    # Use PlantNet API
-                    result = classify_plant_plantnet(arr, active_api_key)
-                    
-                    if result['success']:
-                        top = result['top_result']
-                        plant_name = top['scientific_name']
-                        confidence = top['confidence']
-                        all_results = result['all_results']
-                        common_names = top['common_names']
-                        family = top['family']
-                        genus = top['genus']
-                        method = "PlantNet API"
-                    else:
-                        plant_name = "Unknown"
-                        confidence = 0.0
-                        all_results = []
-                        error_msg = result.get('message', 'Unknown error')
-                        method = "PlantNet API (failed)"
+        # Determine which API key to use
+        active_api_key = st.session_state.get('plantnet_key', PLANTNET_API_KEY)
+        use_plantnet_now = USE_PLANTNET and active_api_key
+        
+        with st.spinner("Identifying plant..."):
+            if use_plantnet_now:
+                # Use PlantNet API
+                result = classify_plant_plantnet(arr, active_api_key)
+                
+                if result['success']:
+                    top = result['top_result']
+                    plant_name = top['scientific_name']
+                    confidence = top['confidence']
+                    all_results = result['all_results']
+                    common_names = top['common_names']
+                    family = top['family']
+                    genus = top['genus']
+                    method = "PlantNet API"
                 else:
-                    # Use custom model
-                    if plant_model is not None:
-                        plant_name, confidence, predictions = classify_plant(arr, plant_model, class_indices)
-                        method = "Custom Model"
-                    else:
-                        plant_name, confidence = "Unknown", 0.0
-                        predictions = None
-                        method = "No model available"
-                
-                metrics = {
-                    "plant_species": plant_name if plant_name else "Unknown",
-                    "confidence": f"{confidence*100:.1f}%" if confidence > 0 else "N/A",
-                    "method": method
-                }
-                meta = {
-                    "user_notes": plant_prompt if plant_prompt else "None"
-                }
-                
-                # Determine current season (basic approximation)
-                current_month = datetime.now().month
-                if current_month in [3, 4, 5]:
-                    season = "Spring"
-                elif current_month in [6, 7, 8]:
-                    season = "Summer"
-                elif current_month in [9, 10, 11]:
-                    season = "Fall"
+                    plant_name = "Unknown"
+                    confidence = 0.0
+                    all_results = []
+                    error_msg = result.get('message', 'Unknown error')
+                    method = "PlantNet API (failed)"
+            else:
+                # Use custom model
+                if plant_model is not None:
+                    plant_name, confidence, predictions = classify_plant(arr, plant_model, class_indices)
+                    method = "Custom Model"
                 else:
-                    season = "Winter"
-                
-                # Pass PlantNet result data to rule engine for LLM
-                plant_data = result if use_plantnet_now else None
-                summary = plant_rule_engine(
-                    plant_name if plant_name else "Unknown",
-                    plant_data=plant_data,
-                    user_observation=plant_prompt if plant_prompt else "",
-                    season=season
-                )
+                    plant_name, confidence = "Unknown", 0.0
+                    predictions = None
+                    method = "No model available"
             
-            # Display results
-            st.image(image, caption="Uploaded Plant Image", use_container_width=True)
+            metrics = {
+                "plant_species": plant_name if plant_name else "Unknown",
+                "confidence": f"{confidence*100:.1f}%" if confidence > 0 else "N/A",
+                "method": method
+            }
+            meta = {
+                "user_notes": plant_prompt if plant_prompt else "None"
+            }
             
-            st.markdown("### 🔍 Plant Identification")
-            
-            if use_plantnet_now and result['success']:
-                # PlantNet results
-                st.success(f"**{plant_name}**")
-                
-                # Common names
-                if common_names:
-                    st.write(f"**Common names:** {', '.join(common_names[:3])}")
-                
-                st.write(f"**Family:** {family}")
-                st.write(f"**Genus:** {genus}")
-                st.write(f"**Confidence:** {confidence*100:.1f}%")
-                
-                # Show all results
-                if len(all_results) > 1:
-                    st.markdown("**Alternative matches:**")
-                    for r in all_results[1:]:
-                        common = ', '.join(r['common_names'][:2]) if r['common_names'] else 'No common name'
-                        st.write(f"{r['rank']}. **{r['scientific_name']}** ({common}) - {r['confidence_pct']}")
-                
-                # API credits
-                remaining = result['query_info'].get('remaining_credits', 'Unknown')
-                st.caption(f"🌐 Identified via PlantNet | Remaining API calls today: {remaining}")
-                
-            elif use_plantnet_now and not result['success']:
-                # PlantNet error
-                st.error(f"❌ {result['error']}")
-                st.warning(result['message'])
-                
-            elif plant_name and confidence > 0:
-                # Custom model results
-                st.success(f"**{plant_name.replace('_', ' ').title()}**")
-                st.write(f"**Confidence:** {confidence*100:.1f}%")
-                st.warning("⚠️ Limited to 30 plant types. For broader identification, add a PlantNet API key!")
-                
-                # Show top 3 predictions
-                if predictions is not None:
-                    top_3_idx = np.argsort(predictions)[-3:][::-1]
-                    st.markdown("**Top 3 Predictions:**")
-                    for idx in top_3_idx:
-                        pred_name = class_indices[str(idx)].replace('_', ' ').title()
-                        pred_conf = predictions[idx] * 100
-                        st.write(f"- {pred_name}: {pred_conf:.1f}%")
+            # Determine current season (basic approximation)
+            current_month = datetime.now().month
+            if current_month in [3, 4, 5]:
+                season = "Spring"
+            elif current_month in [6, 7, 8]:
+                season = "Summer"
+            elif current_month in [9, 10, 11]:
+                season = "Fall"
             else:
-                st.warning("Plant identification unavailable")
+                season = "Winter"
             
-            st.markdown("### 📊 Care Recommendations")
+            # Pass PlantNet result data to rule engine for LLM
+            plant_data = result if use_plantnet_now else None
+            summary = plant_rule_engine(
+                plant_name if plant_name else "Unknown",
+                plant_data=plant_data,
+                user_observation=plant_prompt if plant_prompt else "",
+                season=season
+            )
+        
+        # Display results
+        st.image(image, caption="Uploaded Plant Image", use_container_width=True)
+        
+        st.markdown("### 🔍 Plant Identification")
+        
+        if use_plantnet_now and result['success']:
+            # PlantNet results
+            st.success(f"**{plant_name}**")
             
-            if USE_LLM and GEMINI_API_KEY:
-                # Display LLM-generated recommendations
-                st.markdown(summary)
-                
-                if plant_prompt:
-                    st.markdown("---")
-                    st.caption(" Your observations were analyzed and incorporated into the recommendations above.")
-            else:
-                # Fallback when LLM is not configured
-                st.info(summary)
-                st.info("🚀 **Enable LLM Integration:** Add your Gemini API key to get:\n"
-                       "- Detailed watering schedules\n"
-                       "- Specific sunlight requirements\n"
-                       "- Soil recommendations\n"
-                       "- Pest & disease identification\n"
-                       "- Harvest timing guidance\n"
-                       "- Personalized care based on your observations")
-                
-                if plant_prompt:
-                    st.markdown("### 📝 Your Observations")
-                    st.write(plant_prompt)
-                    st.info("💡 Enable LLM integration to get personalized analysis of your observations.")
+            # Common names
+            if common_names:
+                st.write(f"**Common names:** {', '.join(common_names[:3])}")
             
-            # Downloads
-            report = make_report_text(summary, metrics, meta, "Plant Identification")
-            st.download_button("Download report", data=report, file_name="plant_report.txt", mime="text/plain")
+            st.write(f"**Family:** {family}")
+            st.write(f"**Genus:** {genus}")
+            st.write(f"**Confidence:** {confidence*100:.1f}%")
+            
+            # Show all results
+            if len(all_results) > 1:
+                st.markdown("**Alternative matches:**")
+                for r in all_results[1:]:
+                    common = ', '.join(r['common_names'][:2]) if r['common_names'] else 'No common name'
+                    st.write(f"{r['rank']}. **{r['scientific_name']}** ({common}) - {r['confidence_pct']}")
+            
+            # API credits
+            remaining = result['query_info'].get('remaining_credits', 'Unknown')
+            st.caption(f"🌐 Identified via PlantNet | Remaining API calls today: {remaining}")
+            
+        elif use_plantnet_now and not result['success']:
+            # PlantNet error
+            st.error(f"❌ {result['error']}")
+            st.warning(result['message'])
+            
+        elif plant_name and confidence > 0:
+            # Custom model results
+            st.success(f"**{plant_name.replace('_', ' ').title()}**")
+            st.write(f"**Confidence:** {confidence*100:.1f}%")
+            st.warning("⚠️ Limited to 30 plant types. For broader identification, add a PlantNet API key!")
+            
+            # Show top 3 predictions
+            if predictions is not None:
+                top_3_idx = np.argsort(predictions)[-3:][::-1]
+                st.markdown("**Top 3 Predictions:**")
+                for idx in top_3_idx:
+                    pred_name = class_indices[str(idx)].replace('_', ' ').title()
+                    pred_conf = predictions[idx] * 100
+                    st.write(f"- {pred_name}: {pred_conf:.1f}%")
+        else:
+            st.warning("Plant identification unavailable")
+        
+        st.markdown("### 📊 Care Recommendations")
+        
+        if USE_LLM and GEMINI_API_KEY:
+            # Display LLM-generated recommendations
+            st.markdown(summary)
+            
+            if plant_prompt:
+                st.markdown("---")
+                st.caption(" Your observations were analyzed and incorporated into the recommendations above.")
+        else:
+            # Fallback when LLM is not configured
+            st.info(summary)
+            st.info("🚀 **Enable LLM Integration:** Add your Gemini API key to get:\n"
+                   "- Detailed watering schedules\n"
+                   "- Specific sunlight requirements\n"
+                   "- Soil recommendations\n"
+                   "- Pest & disease identification\n"
+                   "- Harvest timing guidance\n"
+                   "- Personalized care based on your observations")
+            
+            if plant_prompt:
+                st.markdown("### 📝 Your Observations")
+                st.write(plant_prompt)
+                st.info("💡 Enable LLM integration to get personalized analysis of your observations.")
+        
+        # Downloads
+        report = make_report_text(summary, metrics, meta, "Plant Identification")
+        st.download_button("Download report", data=report, file_name="plant_report.txt", mime="text/plain")
+        
+        st.markdown("---")
+        if st.button("🔄 Analyze Another Photo", key="plant_reset"):
+            st.session_state.plant_analyzed = False
+            del st.session_state.plant_image
+            st.rerun()
