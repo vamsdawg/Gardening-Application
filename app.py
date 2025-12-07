@@ -182,7 +182,7 @@ def generate_lawn_care_recommendations(llm, green_coverage, brown_coverage, last
     """Generate lawn care recommendations using Gemini LLM"""
     
     # Build the prompt
-    prompt = f"""You are an expert lawn care specialist. Provide concise, actionable lawn care recommendations.
+    prompt = f"""You are an expert lawn care specialist, turfgrass scientist, and landscape management professional. Your role is to provide highly accurate, region-appropriate, and concise lawn care recommendations based on the identified turf type, visible conditions, and symptoms.
 
 LAWN ANALYSIS:
 - Green Coverage: {green_coverage*100:.1f}%
