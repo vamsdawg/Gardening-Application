@@ -337,8 +337,8 @@ if page == "Lawn Care":
     # Show upload and analyze button only if not analyzed yet
     if not st.session_state.lawn_analyzed:
         lawn_uploaded = st.file_uploader(
-            "Upload lawn image (jpg/png)", 
-            type=["jpg", "jpeg", "png"],
+            "Upload lawn image (jpg/png/webp)", 
+            type=["jpg", "jpeg", "png", "webp"],
             key="lawn_upload",
             accept_multiple_files=False
         )
@@ -480,8 +480,8 @@ elif page == "Plant Care":
     # Show upload and analyze button only if not analyzed yet
     if not st.session_state.plant_analyzed:
         plant_uploaded = st.file_uploader(
-            "Upload plant image (jpg/png)", 
-            type=["jpg", "jpeg", "png"],
+            "Upload plant image (jpg/png/webp)", 
+            type=["jpg", "jpeg", "png", "webp"],
             key="plant_upload",
             accept_multiple_files=False
         )
