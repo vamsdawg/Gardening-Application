@@ -607,7 +607,3 @@ elif page == "Plant Care":
             # Downloads
             report = make_report_text(summary, metrics, meta, "Plant Identification")
             st.download_button("Download report", data=report, file_name="plant_report.txt", mime="text/plain")
-
-# Footer
-st.markdown("---")
-st.markdown("💡 **Next Step:** LLM integration will provide personalized recommendations based on your specific inputs and retrieved documentation.")
