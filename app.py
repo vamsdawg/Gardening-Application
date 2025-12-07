@@ -308,7 +308,17 @@ def make_report_text(summary, metrics, meta, analysis_type):
 
 # --- Main UI ---
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Lawn Care", "Plant Care"])
+
+def reset_page_state():
+    """Reset analysis state when switching pages"""
+    st.session_state.lawn_analyzed = False
+    st.session_state.plant_analyzed = False
+    if 'lawn_image' in st.session_state:
+        del st.session_state.lawn_image
+    if 'plant_image' in st.session_state:
+        del st.session_state.plant_image
+
+page = st.sidebar.radio("Go to", ["Lawn Care", "Plant Care"], on_change=reset_page_state)
 
 if page == "Lawn Care":
     st.title("🏡 Lawn Care Analysis")
