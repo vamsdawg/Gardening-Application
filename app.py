@@ -29,17 +29,15 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 st.set_page_config(page_title="Smart Garden Assistant", layout="wide", initial_sidebar_state="expanded")
 
-# Configuration - Load from environment variables
-PLANTNET_API_KEY = os.getenv('PLANTNET_API_KEY')
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# Configuration
+PLANTNET_API_KEY = '2b10wf7hRFqr7zDzwHEVO7jcu'  # PlantNet API key
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')  # Load from environment variable
 USE_PLANTNET = True  # Set to True to use PlantNet, False to use custom model
 USE_LLM = True  # Set to True to enable LLM recommendations
 
-# Validate API keys are present
-if not PLANTNET_API_KEY:
-    st.error("⚠️ PLANTNET_API_KEY not found. Please add it to your .env file.")
+# Validate Gemini API key
 if not GEMINI_API_KEY:
-    st.error("⚠️ GEMINI_API_KEY not found. Please add it to your .env file.")
+    st.error("⚠️ GEMINI_API_KEY not found. Please add it to Streamlit secrets or .env file.")
 
 # --- Model Loading ---
 @st.cache_resource
