@@ -15,7 +15,7 @@ class PlantCareLLM:
             api_key: Your Google Gemini API key from https://aistudio.google.com/app/apikey
         """
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')  # Free, fast model
+        self.model = genai.GenerativeModel('gemini-2.0-flash')  # Free, fast model
         
     def generate_plant_care_recommendations(
         self,
