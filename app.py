@@ -27,7 +27,7 @@ st.set_page_config(page_title="Smart Garden Assistant", layout="wide", initial_s
 
 # Configuration
 PLANTNET_API_KEY = '2b10NaeyeIzp1Vbp6E30niJGvO'  # Your PlantNet API key
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyCy3CBT5B2DYNDCa6OutBi5KW2TmUzoPvM')  # Your Google Gemini API key
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyAaa7ITUpNdbCkdLtXkR-3YtT_7LD49gro')  # Your Google Gemini API key
 USE_PLANTNET = True  # Set to True to use PlantNet, False to use custom model
 USE_LLM = True  # Set to True to enable LLM recommendations
 
