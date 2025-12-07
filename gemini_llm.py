@@ -88,7 +88,7 @@ class PlantCareLLM:
         
         common_names_str = ', '.join(common_names[:3]) if common_names else 'None available'
         
-        prompt = f"""You are an expert horticulturist and plant care specialist. Provide detailed, practical care recommendations for the following plant.
+        prompt = f"""You are an expert horticulturist, certified arborist, and plant care specialist with deep knowledge of plant physiology, soil science, pathology, and environmental stressors. Your job is to provide thorough, actionable, and scientifically grounded plant-care recommendations.
 
 PLANT IDENTIFICATION:
 - Scientific Name: {scientific_name}
