@@ -307,17 +307,11 @@ def make_report_text(summary, metrics, meta, analysis_type):
     return "\n".join(t)
 
 # --- Main UI ---
-st.title("🌿 Smart Garden Assistant")
-st.write("Choose between Lawn Care analysis or Plant Care diagnosis")
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Lawn Care", "Plant Care"])
 
-# Create tabs for Lawn Care and Plant Care
-tab1, tab2 = st.tabs(["🏡 Lawn Care", "🌱 Plant Care"])
-
-# ========================================
-# TAB 1: LAWN CARE
-# ========================================
-with tab1:
-    st.header("Lawn Care Analysis")
+if page == "Lawn Care":
+    st.title("🏡 Lawn Care Analysis")
     st.write("Upload a photo of your lawn for health analysis and mowing recommendations.")
     
     with st.sidebar:
@@ -422,11 +416,8 @@ with tab1:
             report = make_report_text(summary, metrics, meta, "Lawn Care")
             st.download_button("Download report", data=report, file_name="lawn_report.txt", mime="text/plain")
 
-# ========================================
-# TAB 2: PLANT CARE
-# ========================================
-with tab2:
-    st.header("Plant Species Identification")
+elif page == "Plant Care":
+    st.title("🌱 Plant Species Identification")
     
     # Check which identification method to use
     if USE_PLANTNET and PLANTNET_API_KEY:
