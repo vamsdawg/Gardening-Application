@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import json
 import sys
 import importlib
+from dotenv import load_dotenv
 
 # ---------- third-party imports ----------
 import streamlit as st
@@ -16,6 +17,9 @@ import tensorflow as tf
 from plantnet_api import PlantNetAPI
 from gemini_llm import PlantCareLLM
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -25,11 +29,17 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 st.set_page_config(page_title="Smart Garden Assistant", layout="wide", initial_sidebar_state="expanded")
 
-# Configuration
-PLANTNET_API_KEY = '2b10a3ZMQkv7rOcgtpdGU9nDe'  # Your PlantNet API key
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'AIzaSyCy3CBT5B2DYNDCa6OutBi5KW2TmUzoPvM')  # Your Google Gemini API key
+# Configuration - Load from environment variables
+PLANTNET_API_KEY = os.getenv('PLANTNET_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 USE_PLANTNET = True  # Set to True to use PlantNet, False to use custom model
 USE_LLM = True  # Set to True to enable LLM recommendations
+
+# Validate API keys are present
+if not PLANTNET_API_KEY:
+    st.error("⚠️ PLANTNET_API_KEY not found. Please add it to your .env file.")
+if not GEMINI_API_KEY:
+    st.error("⚠️ GEMINI_API_KEY not found. Please add it to your .env file.")
 
 # --- Model Loading ---
 @st.cache_resource
