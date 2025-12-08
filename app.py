@@ -387,8 +387,14 @@ if page == "Lawn Care":
             sat_min = st.sidebar.slider("Min Saturation", 0, 255, 40, key="lawn_sat")
             val_min = st.sidebar.slider("Min Value", 0, 255, 40, key="lawn_val")
             morph_k = st.sidebar.slider("Morph kernel size", 1, 25, 7, key="lawn_morph")
+            
+            st.sidebar.markdown("**Tune Brightness for Dead/Bald:**")
+            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 60, help="Pixels darker than this are 'Bald'")
+            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 180, help="Pixels brighter than this are ignored (e.g. sky)")
         else:
             lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
+            bald_prob_thresh = 60
+            dead_upper_thresh = 180
         
         with st.spinner("Analyzing lawn..."):
             mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
@@ -398,12 +404,12 @@ if page == "Lawn Care":
             
             gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
             
-            # Dead Grass (Light Brown): Not green, and brightness between 85 and 165
-            dead_mask = (mask == 0) & (gray >= 85) & (gray < 165)
+            # Dead Grass (Light Brown): Not green, and brightness between bald_thresh and dead_upper
+            dead_mask = (mask == 0) & (gray >= bald_prob_thresh) & (gray < dead_upper_thresh)
             dead_pixels = np.count_nonzero(dead_mask)
             
-            # Bald Spots (Dark Brown/Soil): Not green, and brightness < 85
-            bald_mask = (mask == 0) & (gray < 85)
+            # Bald Spots (Dark Brown/Soil): Not green, and brightness < bald_thresh
+            bald_mask = (mask == 0) & (gray < bald_prob_thresh)
             bald_pixels = np.count_nonzero(bald_mask)
             
             # Create combined overlay
