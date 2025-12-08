@@ -389,12 +389,12 @@ if page == "Lawn Care":
             morph_k = st.sidebar.slider("Morph kernel size", 1, 25, 7, key="lawn_morph")
             
             st.sidebar.markdown("**Tune Brightness for Dead/Bald:**")
-            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 60, help="Pixels darker than this are 'Bald'")
-            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 180, help="Pixels brighter than this are ignored (e.g. sky)")
+            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 85, help="Pixels darker than this are 'Bald'")
+            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 165, help="Pixels brighter than this are ignored (e.g. sky)")
         else:
             lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
-            bald_prob_thresh = 60
-            dead_upper_thresh = 180
+            bald_prob_thresh = 85
+            dead_upper_thresh = 165
         
         with st.spinner("Analyzing lawn..."):
             mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
