@@ -128,7 +128,7 @@ def classify_plant_plantnet(image: np.ndarray, api_key):
             'message': f'PlantNet API error: {str(e)}'
         }
 
-def lawn_rule_engine(green_pct, last_mow_days, visible_brown_pct, season, user_observation=""):
+def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_observation=""):
     """Generate lawn care recommendations using LLM or fallback to rules"""
     
     # Build basic analysis
@@ -139,10 +139,11 @@ def lawn_rule_engine(green_pct, last_mow_days, visible_brown_pct, season, user_o
     else:
         health_status = "Poor with low green coverage"
     
-    if visible_brown_pct > 0.05:
-        brown_status = f"Significant brown patches detected ({visible_brown_pct*100:.1f}%)"
+    total_brown = dead_pct + bald_pct
+    if total_brown > 0.05:
+        brown_status = f"Significant issues detected (Dead: {dead_pct*100:.1f}%, Bald: {bald_pct*100:.1f}%)"
     else:
-        brown_status = "Minimal browning"
+        brown_status = "Minimal browning or bald spots"
     
     # If LLM is enabled, use it
     if USE_LLM and GEMINI_API_KEY:
@@ -153,7 +154,8 @@ def lawn_rule_engine(green_pct, last_mow_days, visible_brown_pct, season, user_o
                 result = generate_lawn_care_recommendations(
                     llm=llm,
                     green_coverage=green_pct,
-                    brown_coverage=visible_brown_pct,
+                    dead_coverage=dead_pct,
+                    bald_coverage=bald_pct,
                     last_mow_days=last_mow_days,
                     health_status=health_status,
                     brown_status=brown_status,
@@ -178,23 +180,27 @@ def lawn_rule_engine(green_pct, last_mow_days, visible_brown_pct, season, user_o
     else:
         recs.append("🔴 Low green cover detected — may need restoration (reseeding, soil improvement, or watering).")
 
-    if visible_brown_pct > 0.05:
-        recs.append("🟤 Brown or dry patches detected; inspect for pests, disease, or drought stress.")
+    if dead_pct > 0.05:
+        recs.append("🟤 Dead grass detected; inspect for pests, disease, or drought stress.")
+    
+    if bald_pct > 0.05:
+        recs.append("🟤 Bald spots detected; consider reseeding or soil improvement.")
     
     if season.lower() in ("winter",):
         recs.append("❄️ Seasonal note: growth is slower in winter; avoid heavy mowing.")
     
     return "\n".join(recs)
 
-def generate_lawn_care_recommendations(llm, green_coverage, brown_coverage, last_mow_days, health_status, brown_status, season, user_observation):
+def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
     """Generate lawn care recommendations using Gemini LLM"""
     
     # Build the prompt
     prompt = f"""You are an expert lawn care specialist, turfgrass scientist, and landscape management professional. Your role is to provide highly accurate, region-appropriate, and concise lawn care recommendations based on the identified turf type, visible conditions, and symptoms.
 
 LAWN ANALYSIS:
-- Green Coverage: {green_coverage*100:.1f}%
-- Brown/Dead Patches: {brown_coverage*100:.1f}%
+- Healthy Grass: {green_coverage*100:.1f}%
+- Dead/Diseased Grass: {dead_coverage*100:.1f}%
+- Bald Spots (Soil/No Growth): {bald_coverage*100:.1f}%
 - Overall Health: {health_status}
 - Brown Patch Status: {brown_status}
 - Last Mow: {last_mow_days if last_mow_days else 'Unknown'} days ago
@@ -386,16 +392,44 @@ if page == "Lawn Care":
         
         with st.spinner("Analyzing lawn..."):
             mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
-            overlay = overlay_mask(arr, mask, color=(0, 200, 0), alpha=0.45)
-            green_frac = percent_coverage(mask)
+            
+            # Calculate raw pixel counts
+            green_pixels = np.count_nonzero(mask)
             
             gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-            brown_mask = (mask == 0) & (gray < 150)
-            brown_frac = int(100 * brown_mask.sum() / mask.size) / 100.0
+            
+            # Dead Grass (Light Brown): Not green, and brightness between 85 and 165
+            dead_mask = (mask == 0) & (gray >= 85) & (gray < 165)
+            dead_pixels = np.count_nonzero(dead_mask)
+            
+            # Bald Spots (Dark Brown/Soil): Not green, and brightness < 85
+            bald_mask = (mask == 0) & (gray < 85)
+            bald_pixels = np.count_nonzero(bald_mask)
+            
+            # Create combined overlay
+            # 1. Healthy Green Grass -> Green (0, 200, 0)
+            overlay = overlay_mask(arr, mask, color=(0, 200, 0), alpha=0.4)
+            # 2. Dead Grass -> Yellow (255, 255, 0)
+            overlay = overlay_mask(overlay, dead_mask, color=(255, 255, 0), alpha=0.4)
+            # 3. Bald Spots -> Red (255, 0, 0)
+            overlay = overlay_mask(overlay, bald_mask, color=(255, 0, 0), alpha=0.4)
+            
+            # Normalize to lawn area only (Green + Dead + Bald)
+            total_lawn_pixels = green_pixels + dead_pixels + bald_pixels
+            
+            if total_lawn_pixels > 0:
+                green_frac = green_pixels / total_lawn_pixels
+                dead_frac = dead_pixels / total_lawn_pixels
+                bald_frac = bald_pixels / total_lawn_pixels
+            else:
+                green_frac = 0.0
+                dead_frac = 0.0
+                bald_frac = 0.0
             
             metrics = {
                 "green_coverage_pct": f"{green_frac*100:.1f}%",
-                "estimated_brown_pct": f"{brown_frac*100:.1f}%",
+                "dead_grass_pct": f"{dead_frac*100:.1f}%",
+                "bald_spots_pct": f"{bald_frac*100:.1f}%",
             }
             meta = {
                 "last_mow_days": int(last_mow_days), 
@@ -405,8 +439,9 @@ if page == "Lawn Care":
             
             summary = lawn_rule_engine(
                 green_frac, 
+                dead_frac,
+                bald_frac,
                 last_mow_days, 
-                brown_frac, 
                 lawn_season,
                 user_observation=lawn_prompt if lawn_prompt else ""
             )
@@ -417,8 +452,9 @@ if page == "Lawn Care":
         col2.image(overlay, caption="Green Coverage Analysis", use_container_width=True)
         
         st.markdown("### 📊 Analysis Results")
-        st.write(f"**Green coverage:** {green_frac*100:.1f}%")
-        st.write(f"**Estimated brown/dry:** {brown_frac*100:.1f}%")
+        st.write(f"**Green coverage (Healthy):** {green_frac*100:.1f}%")
+        st.write(f"**Dead Grass (Light Brown):** {dead_frac*100:.1f}%")
+        st.write(f"**Bald Spots (No Growth):** {bald_frac*100:.1f}%")
         
         st.markdown("### 💡 Recommendations")
         
