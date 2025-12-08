@@ -357,16 +357,6 @@ if page == "Lawn Care":
             placeholder="e.g., Brown patches appearing, want thicker grass...",
             key="lawn_prompt"
         )
-        
-        st.markdown("**Exclude Areas (ROI):**")
-        st.caption("Adjust to ignore background woods, fences, or non-lawn areas.")
-        col_roi1, col_roi2 = st.columns(2)
-        with col_roi1:
-            roi_top = st.slider("Exclude Top %", 0, 50, 15, key="roi_top")
-            roi_bottom = st.slider("Exclude Bottom %", 0, 50, 0, key="roi_bottom")
-        with col_roi2:
-            roi_left = st.slider("Exclude Left %", 0, 50, 0, key="roi_left")
-            roi_right = st.slider("Exclude Right %", 0, 50, 0, key="roi_right")
     
     # Show upload and analyze button only if not analyzed yet
     if not st.session_state.lawn_analyzed:
@@ -399,33 +389,15 @@ if page == "Lawn Care":
             morph_k = st.sidebar.slider("Morph kernel size", 1, 25, 7, key="lawn_morph")
             
             st.sidebar.markdown("**Tune Brightness for Dead/Bald:**")
-            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 85, help="Pixels darker than this are 'Bald'")
-            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 165, help="Pixels brighter than this are ignored (e.g. sky/stone)")
+            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 60, help="Pixels darker than this are 'Bald'")
+            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 180, help="Pixels brighter than this are ignored (e.g. sky)")
         else:
             lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
-            bald_prob_thresh = 85  # Increased to capture lighter soil
-            dead_upper_thresh = 165 # Decreased to ignore bright stones/fences
+            bald_prob_thresh = 60
+            dead_upper_thresh = 180
         
         with st.spinner("Analyzing lawn..."):
             mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
-            
-            # --- Apply ROI (Region of Interest) ---
-            height, width = mask.shape
-            # Create ROI mask (255 = keep, 0 = ignore)
-            roi_mask = np.zeros((height, width), dtype=np.uint8)
-            
-            # Calculate boundaries
-            t = int(height * roi_top / 100)
-            b = int(height * (100 - roi_bottom) / 100)
-            l = int(width * roi_left / 100)
-            r = int(width * (100 - roi_right) / 100)
-            
-            # Set active area to 255
-            if b > t and r > l:
-                roi_mask[t:b, l:r] = 255
-            
-            # Apply ROI to green mask
-            mask = cv2.bitwise_and(mask, mask, mask=roi_mask)
             
             # Calculate raw pixel counts
             green_pixels = np.count_nonzero(mask)
@@ -433,13 +405,11 @@ if page == "Lawn Care":
             gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
             
             # Dead Grass (Light Brown): Not green, and brightness between bald_thresh and dead_upper
-            # Also must be within ROI
-            dead_mask = (mask == 0) & (gray >= bald_prob_thresh) & (gray < dead_upper_thresh) & (roi_mask == 255)
+            dead_mask = (mask == 0) & (gray >= bald_prob_thresh) & (gray < dead_upper_thresh)
             dead_pixels = np.count_nonzero(dead_mask)
             
             # Bald Spots (Dark Brown/Soil): Not green, and brightness < bald_thresh
-            # Also must be within ROI
-            bald_mask = (mask == 0) & (gray < bald_prob_thresh) & (roi_mask == 255)
+            bald_mask = (mask == 0) & (gray < bald_prob_thresh)
             bald_pixels = np.count_nonzero(bald_mask)
             
             # Create combined overlay
@@ -557,8 +527,6 @@ elif page == "Plant Care":
             if api_key_input:
                 st.session_state['plantnet_key'] = api_key_input
                 st.success("✅ API key set! Click 'Identify Plant' to use PlantNet.")
-        else:
-            st.success("✅ PlantNet API configured")
         
         plant_prompt = st.text_area(
             "Describe plant issues (optional)", 
