@@ -389,7 +389,7 @@ if page == "Lawn Care":
             morph_k = st.sidebar.slider("Morph kernel size", 1, 25, 7, key="lawn_morph")
             
             st.sidebar.markdown("**Tune Brightness for Dead/Bald:**")
-            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 125, help="Pixels darker than this are 'Bald'")
+            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 145, help="Pixels darker than this are 'Bald'")
             dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 165, help="Pixels brighter than this are ignored (e.g. sky)")
         else:
             lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
