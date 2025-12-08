@@ -87,6 +87,34 @@ def segment_green_cv(image: np.ndarray, lower_h=35, upper_h=85, sat_min=40, val_
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     return mask
 
+def segment_brown_yellow_cv(image: np.ndarray, morph_k=5):
+    """Segment dead grass (yellow) and soil (brown) using HSV to exclude background."""
+    hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    
+    # Dead Grass (Yellow/Straw): Hue 15-35, Sat > 20, Val > 40
+    # Saturation > 20 helps exclude grey fences/concrete
+    lower_yellow = np.array([15, 25, 40], dtype=np.uint8)
+    upper_yellow = np.array([35, 255, 255], dtype=np.uint8)
+    mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    
+    # Soil (Brown): Hue 0-15 (and 165-180), Sat > 25, Val 20-200
+    lower_brown1 = np.array([0, 25, 20], dtype=np.uint8)
+    upper_brown1 = np.array([15, 255, 200], dtype=np.uint8)
+    mask_brown1 = cv2.inRange(hsv, lower_brown1, upper_brown1)
+    
+    lower_brown2 = np.array([165, 25, 20], dtype=np.uint8)
+    upper_brown2 = np.array([180, 255, 200], dtype=np.uint8)
+    mask_brown2 = cv2.inRange(hsv, lower_brown2, upper_brown2)
+    
+    mask_brown = cv2.bitwise_or(mask_brown1, mask_brown2)
+    
+    # Cleanup
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (morph_k, morph_k))
+    mask_yellow = cv2.morphologyEx(mask_yellow, cv2.MORPH_CLOSE, kernel)
+    mask_brown = cv2.morphologyEx(mask_brown, cv2.MORPH_CLOSE, kernel)
+    
+    return mask_yellow, mask_brown
+
 def overlay_mask(image: np.ndarray, mask: np.ndarray, color=(0, 255, 0), alpha=0.5):
     colored = image.copy()
     colored[mask > 0] = (np.array(color) * alpha + colored[mask > 0] * (1 - alpha)).astype(np.uint8)
@@ -388,319 +416,10 @@ if page == "Lawn Care":
             val_min = st.sidebar.slider("Min Value", 0, 255, 40, key="lawn_val")
             morph_k = st.sidebar.slider("Morph kernel size", 1, 25, 7, key="lawn_morph")
             
-            st.sidebar.markdown("**Tune Brightness for Dead/Bald:**")
-            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 150, 60, help="Pixels darker than this are 'Bald'")
-            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 180, help="Pixels brighter than this are ignored (e.g. sky)")
+            st.sidebar.info("Dead/Bald detection now uses color (Yellow/Brown) to exclude fences/pots.")
         else:
             lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
-            bald_prob_thresh = 60
-            dead_upper_thresh = 180
         
         with st.spinner("Analyzing lawn..."):
-            mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
-            
-            # Calculate raw pixel counts
-            green_pixels = np.count_nonzero(mask)
-            
-            gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-            
-            # Dead Grass (Light Brown): Not green, and brightness between bald_thresh and dead_upper
-            dead_mask = (mask == 0) & (gray >= bald_prob_thresh) & (gray < dead_upper_thresh)
-            dead_pixels = np.count_nonzero(dead_mask)
-            
-            # Bald Spots (Dark Brown/Soil): Not green, and brightness < bald_thresh
-            bald_mask = (mask == 0) & (gray < bald_prob_thresh)
-            bald_pixels = np.count_nonzero(bald_mask)
-            
-            # Create combined overlay
-            # 1. Healthy Green Grass -> Green (0, 200, 0)
-            overlay = overlay_mask(arr, mask, color=(0, 200, 0), alpha=0.4)
-            # 2. Dead Grass -> Yellow (255, 255, 0)
-            overlay = overlay_mask(overlay, dead_mask, color=(255, 255, 0), alpha=0.4)
-            # 3. Bald Spots -> Red (255, 0, 0)
-            overlay = overlay_mask(overlay, bald_mask, color=(255, 0, 0), alpha=0.4)
-            
-            # Normalize to lawn area only (Green + Dead + Bald)
-            total_lawn_pixels = green_pixels + dead_pixels + bald_pixels
-            
-            if total_lawn_pixels > 0:
-                green_frac = green_pixels / total_lawn_pixels
-                dead_frac = dead_pixels / total_lawn_pixels
-                bald_frac = bald_pixels / total_lawn_pixels
-            else:
-                green_frac = 0.0
-                dead_frac = 0.0
-                bald_frac = 0.0
-            
-            metrics = {
-                "green_coverage_pct": f"{green_frac*100:.1f}%",
-                "dead_grass_pct": f"{dead_frac*100:.1f}%",
-                "bald_spots_pct": f"{bald_frac*100:.1f}%",
-            }
-            meta = {
-                "last_mow_days": int(last_mow_days), 
-                "season": lawn_season,
-                "user_notes": lawn_prompt if lawn_prompt else "None"
-            }
-            
-            summary = lawn_rule_engine(
-                green_frac, 
-                dead_frac,
-                bald_frac,
-                last_mow_days, 
-                lawn_season,
-                user_observation=lawn_prompt if lawn_prompt else ""
-            )
-        
-        # Display results
-        col1, col2 = st.columns([1, 1])
-        col1.image(image, caption="Original", use_container_width=True)
-        col2.image(overlay, caption="Green Coverage Analysis", use_container_width=True)
-        
-        st.markdown("### 📊 Analysis Results")
-        st.write(f"**Green coverage (Healthy):** {green_frac*100:.1f}%")
-        st.write(f"**Dead Grass (Light Brown):** {dead_frac*100:.1f}%")
-        st.write(f"**Bald Spots (No Growth):** {bald_frac*100:.1f}%")
-        
-        st.markdown("### 💡 Recommendations")
-        
-        if USE_LLM and GEMINI_API_KEY:
-            # Display LLM-generated recommendations
-            st.markdown(summary)
-            
-            if lawn_prompt:
-                st.markdown("---")
-                st.caption("💡 Your concerns were analyzed and incorporated into the recommendations above.")
-        else:
-            # Fallback when LLM is not configured
-            st.info(summary)
-            
-            if lawn_prompt:
-                st.markdown("### 📝 Your Notes")
-                st.write(lawn_prompt)
-                st.info("💡 Enable LLM integration to get personalized analysis of your lawn concerns.")
-        
-        # Downloads
-        mask_pil = Image.fromarray(mask)
-        buf_mask = io.BytesIO()
-        mask_pil.save(buf_mask, format="PNG")
-        st.download_button("Download mask", data=buf_mask.getvalue(), file_name="lawn_mask.png", mime="image/png")
-        
-        report = make_report_text(summary, metrics, meta, "Lawn Care")
-        st.download_button("Download report", data=report, file_name="lawn_report.txt", mime="text/plain")
-        
-        st.markdown("---")
-        if st.button("🔄 Analyze Another Photo", key="lawn_reset"):
-            st.session_state.lawn_analyzed = False
-            del st.session_state.lawn_image
-            st.rerun()
-
-elif page == "Plant Care":
-    st.title("🌱 Plant Species Identification")
-    
-    # Initialize session state for plant analysis
-    if 'plant_analyzed' not in st.session_state:
-        st.session_state.plant_analyzed = False
-    
-    # Check which identification method to use
-    if USE_PLANTNET and PLANTNET_API_KEY:
-        st.write("🌍 Powered by PlantNet - Identifies 40,000+ plant species worldwide!")
-        identification_method = "plantnet"
-    else:
-        st.write("Upload a photo of your plant to identify the species. Detailed care recommendations coming soon!")
-        st.info("💡 To unlock identification of 40,000+ plant species, add your PlantNet API key to the sidebar!")
-        identification_method = "custom"
-    
-    # Load custom model (as fallback or primary)
-    plant_model, class_indices = load_plant_model()
-    
-    with st.sidebar:
-        st.subheader("Plant Care Options")
-        
-        # API Key input
-        if not PLANTNET_API_KEY:
-            api_key_input = st.text_input(
-                "PlantNet API Key (optional)",
-                type="password",
-                help="Get a free key at https://my.plantnet.org/account/doc (500 requests/day)"
-            )
-            if api_key_input:
-                st.session_state['plantnet_key'] = api_key_input
-                st.success("✅ API key set! Click 'Identify Plant' to use PlantNet.")
-        else:
-            st.success("✅ PlantNet API configured")
-        
-        plant_prompt = st.text_area(
-            "Describe plant issues (optional)", 
-            placeholder="e.g., Leaves turning brown, spots appearing...",
-            key="plant_prompt",
-            help="Your observations will be used for personalized recommendations once LLM integration is complete."
-        )
-    
-    # Show upload and analyze button only if not analyzed yet
-    if not st.session_state.plant_analyzed:
-        plant_uploaded = st.file_uploader(
-            "Upload plant image (jpg/png/webp)", 
-            type=["jpg", "jpeg", "png", "webp"],
-            key="plant_upload",
-            accept_multiple_files=False
-        )
-        
-        if plant_uploaded:
-            if st.button("🔍 Identify Plant", key="plant_submit_main"):
-                st.session_state.plant_analyzed = True
-                st.session_state.plant_image = plant_uploaded
-                st.rerun()
-    
-    # Show results if analyzed
-    if st.session_state.plant_analyzed and 'plant_image' in st.session_state:
-        image = Image.open(st.session_state.plant_image).convert("RGB")
-        arr = np.array(image)
-        
-        # Determine which API key to use
-        active_api_key = st.session_state.get('plantnet_key', PLANTNET_API_KEY)
-        use_plantnet_now = USE_PLANTNET and active_api_key
-        
-        with st.spinner("Identifying plant..."):
-            if use_plantnet_now:
-                # Use PlantNet API
-                result = classify_plant_plantnet(arr, active_api_key)
-                
-                if result['success']:
-                    top = result['top_result']
-                    plant_name = top['scientific_name']
-                    confidence = top['confidence']
-                    all_results = result['all_results']
-                    common_names = top['common_names']
-                    family = top['family']
-                    genus = top['genus']
-                    method = "PlantNet API"
-                else:
-                    plant_name = "Unknown"
-                    confidence = 0.0
-                    all_results = []
-                    error_msg = result.get('message', 'Unknown error')
-                    method = "PlantNet API (failed)"
-            else:
-                # Use custom model
-                if plant_model is not None:
-                    plant_name, confidence, predictions = classify_plant(arr, plant_model, class_indices)
-                    method = "Custom Model"
-                else:
-                    plant_name, confidence = "Unknown", 0.0
-                    predictions = None
-                    method = "No model available"
-            
-            metrics = {
-                "plant_species": plant_name if plant_name else "Unknown",
-                "confidence": f"{confidence*100:.1f}%" if confidence > 0 else "N/A",
-                "method": method
-            }
-            meta = {
-                "user_notes": plant_prompt if plant_prompt else "None"
-            }
-            
-            # Determine current season (basic approximation)
-            current_month = datetime.now().month
-            if current_month in [3, 4, 5]:
-                season = "Spring"
-            elif current_month in [6, 7, 8]:
-                season = "Summer"
-            elif current_month in [9, 10, 11]:
-                season = "Fall"
-            else:
-                season = "Winter"
-            
-            # Pass PlantNet result data to rule engine for LLM
-            plant_data = result if use_plantnet_now else None
-            summary = plant_rule_engine(
-                plant_name if plant_name else "Unknown",
-                plant_data=plant_data,
-                user_observation=plant_prompt if plant_prompt else "",
-                season=season
-            )
-        
-        # Display results
-        st.image(image, caption="Uploaded Plant Image", use_container_width=True)
-        
-        st.markdown("### 🔍 Plant Identification")
-        
-        if use_plantnet_now and result['success']:
-            # PlantNet results
-            st.success(f"**{plant_name}**")
-            
-            # Common names
-            if common_names:
-                st.write(f"**Common names:** {', '.join(common_names[:3])}")
-            
-            st.write(f"**Family:** {family}")
-            st.write(f"**Genus:** {genus}")
-            st.write(f"**Confidence:** {confidence*100:.1f}%")
-            
-            # Show all results
-            if len(all_results) > 1:
-                st.markdown("**Alternative matches:**")
-                for r in all_results[1:]:
-                    common = ', '.join(r['common_names'][:2]) if r['common_names'] else 'No common name'
-                    st.write(f"{r['rank']}. **{r['scientific_name']}** ({common}) - {r['confidence_pct']}")
-            
-            # API credits
-            remaining = result['query_info'].get('remaining_credits', 'Unknown')
-            st.caption(f"🌐 Identified via PlantNet | Remaining API calls today: {remaining}")
-            
-        elif use_plantnet_now and not result['success']:
-            # PlantNet error
-            st.error(f"❌ {result['error']}")
-            st.warning(result['message'])
-            
-        elif plant_name and confidence > 0:
-            # Custom model results
-            st.success(f"**{plant_name.replace('_', ' ').title()}**")
-            st.write(f"**Confidence:** {confidence*100:.1f}%")
-            st.warning("⚠️ Limited to 30 plant types. For broader identification, add a PlantNet API key!")
-            
-            # Show top 3 predictions
-            if predictions is not None:
-                top_3_idx = np.argsort(predictions)[-3:][::-1]
-                st.markdown("**Top 3 Predictions:**")
-                for idx in top_3_idx:
-                    pred_name = class_indices[str(idx)].replace('_', ' ').title()
-                    pred_conf = predictions[idx] * 100
-                    st.write(f"- {pred_name}: {pred_conf:.1f}%")
-        else:
-            st.warning("Plant identification unavailable")
-        
-        st.markdown("### 📊 Care Recommendations")
-        
-        if USE_LLM and GEMINI_API_KEY:
-            # Display LLM-generated recommendations
-            st.markdown(summary)
-            
-            if plant_prompt:
-                st.markdown("---")
-                st.caption(" Your observations were analyzed and incorporated into the recommendations above.")
-        else:
-            # Fallback when LLM is not configured
-            st.info(summary)
-            st.info("🚀 **Enable LLM Integration:** Add your Gemini API key to get:\n"
-                   "- Detailed watering schedules\n"
-                   "- Specific sunlight requirements\n"
-                   "- Soil recommendations\n"
-                   "- Pest & disease identification\n"
-                   "- Harvest timing guidance\n"
-                   "- Personalized care based on your observations")
-            
-            if plant_prompt:
-                st.markdown("### 📝 Your Observations")
-                st.write(plant_prompt)
-                st.info("💡 Enable LLM integration to get personalized analysis of your observations.")
-        
-        # Downloads
-        report = make_report_text(summary, metrics, meta, "Plant Identification")
-        st.download_button("Download report", data=report, file_name="plant_report.txt", mime="text/plain")
-        
-        st.markdown("---")
-        if st.button("🔄 Analyze Another Photo", key="plant_reset"):
-            st.session_state.plant_analyzed = False
-            del st.session_state.plant_image
-            st.rerun()
+            # 1. Green Mask
+            mask_green = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
