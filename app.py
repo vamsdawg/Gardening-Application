@@ -344,11 +344,6 @@ if page == "Lawn Care":
 
     with st.sidebar:
         st.subheader("Lawn Care Options")
-        lawn_segmentation_method = st.selectbox(
-            "Segmentation method", 
-            ["Color (fast)", "Color + tune sliders"],
-            key="lawn_seg"
-        )
         st.markdown("**Lawn Context:**")
         last_mow_days = st.number_input("Days since last mow", min_value=0, max_value=365, value=14, key="lawn_mow")
         lawn_season = st.selectbox("Season", ["spring", "summer", "autumn", "winter"], key="lawn_season")
@@ -380,21 +375,9 @@ if page == "Lawn Care":
         arr = np.array(image)
         
         # Segmentation parameters
-        if lawn_segmentation_method == "Color + tune sliders":
-            st.sidebar.markdown("**Tune HSV thresholds for 'green':**")
-            lower_h = st.sidebar.slider("Lower Hue", 25, 85, 35, key="lawn_lh")
-            upper_h = st.sidebar.slider("Upper Hue", 60, 100, 85, key="lawn_uh")
-            sat_min = st.sidebar.slider("Min Saturation", 0, 255, 40, key="lawn_sat")
-            val_min = st.sidebar.slider("Min Value", 0, 255, 40, key="lawn_val")
-            morph_k = st.sidebar.slider("Morph kernel size", 1, 25, 7, key="lawn_morph")
-            
-            st.sidebar.markdown("**Tune Brightness for Dead/Bald:**")
-            bald_prob_thresh = st.sidebar.slider("Bald/Soil Brightness Threshold", 0, 255, 145, help="Pixels darker than this are 'Bald'")
-            dead_upper_thresh = st.sidebar.slider("Dead Grass Max Brightness", 100, 255, 165, help="Pixels brighter than this are ignored (e.g. sky)")
-        else:
-            lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
-            bald_prob_thresh = 145
-            dead_upper_thresh = 165
+        lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
+        bald_prob_thresh = 145
+        dead_upper_thresh = 165
         
         with st.spinner("Analyzing lawn..."):
             mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
