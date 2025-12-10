@@ -548,13 +548,13 @@ if page == "Lawn Care":
             weed_status = "No weeds detected"
             weed_icon = "✅"
         elif weed_count <= 5:
-            weed_status = "Small amounts of weeds detected"
-            weed_icon = "⚠️"
-        elif weed_count <= 10:
-            weed_status = "Weeds detected"
+            weed_status = "Small amounts of Weeds Detected"
             weed_icon = "🌿"
+        elif weed_count <= 10:
+            weed_status = "Weeds Detected"
+            weed_icon = "⚠️"
         else:
-            weed_status = "Lots of weeds detected"
+            weed_status = "Lots of Weeds Detected"
             weed_icon = "🚨"
         
         st.write(f"**Weed Detection:** {weed_icon} {weed_status}")
