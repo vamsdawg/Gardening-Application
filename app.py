@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 # ---------- third-party imports ----------
 import streamlit as st
+from streamlit_cropper import st_cropper
 from PIL import Image
 import numpy as np
 import cv2
@@ -450,15 +451,26 @@ if page == "Lawn Care":
         )
         
         if lawn_uploaded:
+            st.write("Crop the image to select the lawn area:")
+            # Load image for cropping
+            img = Image.open(lawn_uploaded)
+            # Get cropped image from user
+            cropped_img = st_cropper(img, realtime_update=True, box_color='#00FF00', aspect_ratio=None)
+            
             # Show analyze button only when image is uploaded
             if st.button("🔍 Analyze Lawn", key="lawn_submit_main"):
                 st.session_state.lawn_analyzed = True
-                st.session_state.lawn_image = lawn_uploaded
+                st.session_state.lawn_image = cropped_img
                 st.rerun()
     
     # Show results if analyzed
     if st.session_state.lawn_analyzed and 'lawn_image' in st.session_state:
-        image = Image.open(st.session_state.lawn_image).convert("RGB")
+        # Handle both cropped (PIL Image) and raw upload (UploadedFile)
+        if isinstance(st.session_state.lawn_image, Image.Image):
+            image = st.session_state.lawn_image.convert("RGB")
+        else:
+            image = Image.open(st.session_state.lawn_image).convert("RGB")
+            
         arr = np.array(image)
         
         with st.spinner("Analyzing lawn..."):
