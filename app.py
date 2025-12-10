@@ -580,8 +580,8 @@ if page == "Lawn Care":
                                     align-items: center;
                                     gap: 8px;
                                 ">
-                                    <span style="font-size: 1.2em;">🛍️</span>
-                                    <span style="color: #FFFFFF;">Buy at {store_name}</span>
+                                    <span style="font-size: 1.2em;"></span>
+                                    <span style="color: #FFFFFF;">Buy at {store_name}!</span>
                                 </div>
                             </a>
                         """, unsafe_allow_html=True)
