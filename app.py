@@ -565,19 +565,24 @@ if page == "Lawn Care":
                             btn_color = "#004990"
                         
                         st.markdown(f"""
-                            <a href="{search_url}" target="_blank" style="
-                                display: block;
-                                width: 100%;
-                                padding: 10px;
-                                background-color: {btn_color};
-                                color: #FFFFFF !important;
-                                text-align: center;
-                                text-decoration: none;
-                                border-radius: 8px;
-                                font-weight: bold;
-                                margin-top: 5px;
-                            ">
-                                <span style="color: #FFFFFF !important;">🛍️ Buy at {store_name}</span>
+                            <a href="{search_url}" target="_blank" style="text-decoration: none;">
+                                <div style="
+                                    width: 100%;
+                                    background-color: {btn_color};
+                                    color: #FFFFFF;
+                                    padding: 10px;
+                                    text-align: center;
+                                    border-radius: 8px;
+                                    font-weight: bold;
+                                    margin-top: 5px;
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    gap: 8px;
+                                ">
+                                    <span style="font-size: 1.2em;">🛍️</span>
+                                    <span style="color: #FFFFFF;">Buy at {store_name}</span>
+                                </div>
                             </a>
                         """, unsafe_allow_html=True)
             else:
