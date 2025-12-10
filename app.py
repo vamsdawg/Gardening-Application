@@ -570,14 +570,14 @@ if page == "Lawn Care":
                                 width: 100%;
                                 padding: 10px;
                                 background-color: {btn_color};
-                                color: white !important;
+                                color: #FFFFFF !important;
                                 text-align: center;
                                 text-decoration: none;
                                 border-radius: 8px;
                                 font-weight: bold;
                                 margin-top: 5px;
                             ">
-                                🛍️ Buy at {store_name}
+                                <span style="color: #FFFFFF !important;">🛍️ Buy at {store_name}</span>
                             </a>
                         """, unsafe_allow_html=True)
             else:
