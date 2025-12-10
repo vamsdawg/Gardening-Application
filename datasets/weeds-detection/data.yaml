@@ -1,0 +1,8 @@
+names:
+- crop
+- weed
+nc: 2
+path: G:\DSBA\DSBA 6211\Project\Gardening-Application\datasets\weeds-detection
+test: test/images
+train: train/images
+val: val/images
