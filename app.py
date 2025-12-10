@@ -545,7 +545,7 @@ if page == "Lawn Care":
                         st.caption(summary.get('reason', ''))
                         
                         if summary.get('usage_instructions'):
-                            with st.expander("📋 How to use"):
+                            with st.expander("📋 How to use", expanded=True):
                                 st.markdown(summary['usage_instructions'])
             else:
                 st.markdown(summary)
