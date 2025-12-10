@@ -163,7 +163,7 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
                     user_observation=user_observation
                 )
                 if result['success']:
-                    return result['recommendations']
+                    return result
         except Exception as e:
             # Fall back to rules if LLM fails
             pass
@@ -189,7 +189,11 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
     if season.lower() in ("winter",):
         recs.append("❄️ Seasonal note: growth is slower in winter; avoid heavy mowing.")
     
-    return "\n".join(recs)
+    return {
+        'success': True,
+        'recommendations': "\n".join(recs),
+        'product_rec': None
+    }
 
 def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
     """Generate lawn care recommendations using Gemini LLM"""
@@ -244,15 +248,44 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS:
    - 3 key actions for this season
 """
     
-    prompt += "\nKeep it SHORT and practical. Use bullet points. Focus on immediate actions."
+    prompt += """
+IMPORTANT: Output your response as a valid JSON object with exactly two keys:
+1. "care_guide": A markdown string containing the numbered sections 1-6 above.
+2. "product_recommendation": A markdown string recommending ONE specific product from Lowe's or Home Depot that addresses the main issue. Include the product name and a brief reason why.
+
+Example JSON format:
+{
+  "care_guide": "1. **Summary**...",
+  "product_recommendation": "**Recommended Product:** Scott's Turf Builder..."
+}
+"""
     
     try:
         response = llm.model.generate_content(prompt)
+        text = response.text.strip()
+        # Clean up markdown code blocks if present
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+        
+        data = json.loads(text)
         return {
             'success': True,
-            'recommendations': response.text
+            'recommendations': data.get('care_guide', 'No guide generated.'),
+            'product_rec': data.get('product_recommendation', 'No product recommendation.')
         }
     except Exception as e:
+        # Fallback: try to return raw text if JSON parsing fails but we got something
+        if 'response' in locals() and response.text:
+             return {
+                'success': True,
+                'recommendations': response.text,
+                'product_rec': None
+            }
         return {
             'success': False,
             'error': str(e)
@@ -309,7 +342,15 @@ def make_report_text(summary, metrics, meta, analysis_type):
     t.append("Generated: " + datetime.now(timezone.utc).isoformat())
     t.append("")
     t.append("Summary:")
-    t.append(summary)
+    
+    if isinstance(summary, dict):
+        t.append(summary.get('recommendations', ''))
+        if summary.get('product_rec'):
+            t.append("\nProduct Recommendation:")
+            t.append(summary['product_rec'])
+    else:
+        t.append(str(summary))
+        
     t.append("")
     t.append("Metrics:")
     for k, v in metrics.items():
@@ -344,6 +385,7 @@ if page == "Lawn Care":
 
     with st.sidebar:
         st.subheader("Lawn Care Options")
+        st.markdown("**Lawn Context:**")
         last_mow_days = st.number_input("Days since last mow", min_value=0, max_value=365, value=14, key="lawn_mow")
         lawn_season = st.selectbox("Season", ["spring", "summer", "autumn", "winter"], key="lawn_season")
         lawn_prompt = st.text_area(
@@ -448,14 +490,26 @@ if page == "Lawn Care":
         
         if USE_LLM and GEMINI_API_KEY:
             # Display LLM-generated recommendations
-            st.markdown(summary)
+            if isinstance(summary, dict) and 'recommendations' in summary:
+                rec_col, prod_col = st.columns([2, 1])
+                with rec_col:
+                    st.markdown(summary['recommendations'])
+                with prod_col:
+                    if summary.get('product_rec'):
+                        st.info("🛍️ **Product Pick**")
+                        st.markdown(summary['product_rec'])
+            else:
+                st.markdown(summary)
             
             if lawn_prompt:
                 st.markdown("---")
                 st.caption("💡 Your concerns were analyzed and incorporated into the recommendations above.")
         else:
             # Fallback when LLM is not configured
-            st.info(summary)
+            if isinstance(summary, dict):
+                st.info(summary['recommendations'])
+            else:
+                st.info(summary)
             
             if lawn_prompt:
                 st.markdown("### 📝 Your Notes")
