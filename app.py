@@ -419,7 +419,6 @@ if page == "Lawn Care":
 
     with st.sidebar:
         st.subheader("Lawn Care Options")
-        st.markdown("**Lawn Context:**")
         last_mow_days = st.number_input("Days since last mow", min_value=0, max_value=365, value=14, key="lawn_mow")
         lawn_season = st.selectbox("Season", ["spring", "summer", "autumn", "winter"], key="lawn_season")
         lawn_prompt = st.text_area(
