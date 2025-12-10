@@ -576,15 +576,18 @@ if page == "Lawn Care":
                         # Buy at: Store Logo
                         st.markdown("**Buy at:**")
                         if is_home_depot:
-                            # Use direct SVG for better reliability
-                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/5/5f/TheHomeDepot.svg"
+                            # Use PNG thumbnail for better compatibility
+                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/200px-TheHomeDepot.svg.png"
                             store_name = "Home Depot"
                         else:
-                            # Use direct SVG for better reliability
-                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/2/2c/Lowes_Companies_Logo.svg"
+                            # Use PNG thumbnail for better compatibility
+                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/200px-Lowes_Companies_Logo.svg.png"
                             store_name = "Lowe's"
                         
+                        # Logo with link
                         st.markdown(f'<a href="{search_url}" target="_blank"><img src="{store_logo}" alt="Buy at {store_name}" width="100" style="border-radius: 5px;"></a>', unsafe_allow_html=True)
+                        # Text link backup
+                        st.markdown(f'<a href="{search_url}" target="_blank" style="text-decoration: none; font-size: 0.9em; color: #0066cc;">Click here to buy at {store_name}</a>', unsafe_allow_html=True)
                         
                         # How to use
                         if summary.get('usage_instructions'):
