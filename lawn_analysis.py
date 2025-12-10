@@ -99,16 +99,20 @@ class LawnAnalyzer:
         # 1. Run YOLO if available
         if self.yolo_model:
             try:
-                # Run inference with a confidence threshold
+                # Run inference with a lower confidence threshold to catch more potential weeds
                 # Custom model might need a lower threshold if trained briefly
-                results = self.yolo_model(image, conf=0.25)
+                print("Running YOLO inference...")
+                results = self.yolo_model(image, conf=0.15)
                 
                 for r in results:
                     boxes = r.boxes
+                    print(f"YOLO found {len(boxes)} boxes.")
                     for box in boxes:
                         cls_id = int(box.cls[0])
                         conf = float(box.conf[0])
                         label = self.yolo_model.names[cls_id]
+                        
+                        print(f"Detected: {label} ({conf:.2f})")
                         
                         # If using custom model, classes are likely 'crop' and 'weed'
                         # If using standard model, we return all detections
