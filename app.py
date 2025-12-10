@@ -256,7 +256,7 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS:
 CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
 CRITICAL: You MUST provide the specific 'item_number' (SKU, Internet #, or Model #) for the product. This is used to generate the purchase link.
 
-IMPORTANT: Output your response as a valid JSON object with these keys:
+IMPORTANT: Output your response in valid JSON format containing these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
 3. "store": Either "Lowe's" or "Home Depot".
