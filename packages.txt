@@ -1,2 +1,3 @@
 libgl1
 libglib2.0-0
+# Dependencies for OpenCV and YOLO
