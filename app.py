@@ -268,24 +268,21 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS using this specific Markdown format:
     
     prompt += """
 CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
-CRITICAL: You MUST provide the specific 'item_number' (SKU, Internet #, or Model #) for the product. This is used to generate the purchase link.
 
 IMPORTANT: Output your response in valid JSON format containing these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
 3. "store": Either "Lowe's" or "Home Depot".
-4. "item_number": The specific Store SKU (for Lowe's) or Internet # (for Home Depot) for the product. This is REQUIRED for the search link to work.
-5. "reason": A brief explanation of why this product is recommended.
-6. "usage_instructions": Detailed, step-by-step application instructions. Include preparation (e.g., mow first?), application method (spreader settings if applicable), watering requirements after application, and safety precautions.
-7. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
-8. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
+4. "reason": A brief explanation of why this product is recommended.
+5. "usage_instructions": Detailed, step-by-step application instructions. Include preparation (e.g., mow first?), application method (spreader settings if applicable), watering requirements after application, and safety precautions.
+6. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
+7. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
 
 Example JSON format:
 {
   "care_guide": "1. **Summary**...",
   "product_name": "Scotts Turf Builder",
   "store": "Lowe's",
-  "item_number": "123456",
   "reason": "Contains the right mix of...",
   "usage_instructions": "1. Apply to dry lawn... 2. Water immediately...",
   "image_url": "https://...",
@@ -540,27 +537,11 @@ if page == "Lawn Care":
                         is_home_depot = "Home Depot" in store
                         
                         # Generate Search URL
-                        search_url = None
-                        
-                        # 1. Try Item Number (Best)
-                        if item_number and str(item_number).lower() not in ['none', 'n/a', '']:
-                            clean_item_num = str(item_number).strip()
-                            if is_home_depot:
-                                search_url = f"https://www.homedepot.com/s/{clean_item_num}"
-                            else:
-                                search_url = f"https://www.lowes.com/search?searchTerm={clean_item_num}"
-                        
-                        # 2. Try Direct Product URL from LLM
-                        if not search_url and summary.get('product_url'):
-                            search_url = summary.get('product_url')
-                            
-                        # 3. Fallback to Product Name Search
-                        if not search_url:
-                            clean_name = product_name.replace(' ', '%20')
-                            if is_home_depot:
-                                search_url = f"https://www.homedepot.com/s/{clean_name}"
-                            else:
-                                search_url = f"https://www.lowes.com/search?searchTerm={clean_name}"
+                        clean_name = product_name.replace(' ', '%20')
+                        if is_home_depot:
+                            search_url = f"https://www.homedepot.com/s/{clean_name}"
+                        else:
+                            search_url = f"https://www.lowes.com/search?searchTerm={clean_name}"
                         
                         # Product Name (Centered, Bold, Title Font)
                         st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
