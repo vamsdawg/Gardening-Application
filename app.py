@@ -525,7 +525,7 @@ if page == "Lawn Care":
             if isinstance(summary, dict) and 'recommendations' in summary:
                 rec_col, prod_col = st.columns([2, 1])
                 with rec_col:
-                    st.markdown("<h3 style='text-align: center;'>💡 Recommendations</h3>", unsafe_allow_html=True)
+                    st.markdown("### 💡 Recommendations")
                     st.markdown(summary['recommendations'])
                 with prod_col:
                     if summary.get('product_name'):
