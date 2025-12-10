@@ -85,57 +85,103 @@ class LawnAnalyzer:
         """
         Object Detection (YOLO): Identifies and locates objects using YOLOv8.
         """
-        if self.yolo_model is None:
-             return {
-                "detected_objects": [],
-                "message": "YOLO model failed to load."
-            }
-        
-        try:
-            # Run inference
-            results = self.yolo_model(image)
-            
-            detected_objects = []
-            for r in results:
-                boxes = r.boxes
-                for box in boxes:
-                    cls_id = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    label = self.yolo_model.names[cls_id]
-                    
-                    # Filter for relevant classes if using standard COCO model
-                    # COCO classes: 58=potted plant, but standard model isn't great for weeds.
-                    # We'll return everything for now so the user sees it works.
-                    detected_objects.append({
-                        "label": label,
-                        "confidence": conf,
-                        "box": box.xyxy[0].tolist()
-                    })
-            
-            if not detected_objects:
-                 return {
-                    "detected_objects": [],
-                    "message": "No objects detected by YOLOv8."
-                }
+        detected_objects = []
+        yolo_message = ""
 
-            # Summarize detections
-            counts = {}
-            for obj in detected_objects:
-                l = obj['label']
-                counts[l] = counts.get(l, 0) + 1
+        # 1. Run YOLO if available
+        if self.yolo_model:
+            try:
+                # Run inference
+                results = self.yolo_model(image)
+                
+                for r in results:
+                    boxes = r.boxes
+                    for box in boxes:
+                        cls_id = int(box.cls[0])
+                        conf = float(box.conf[0])
+                        label = self.yolo_model.names[cls_id]
+                        
+                        # Filter for relevant classes if using standard COCO model
+                        # COCO classes: 58=potted plant, but standard model isn't great for weeds.
+                        # We'll return everything for now so the user sees it works.
+                        detected_objects.append({
+                            "label": label,
+                            "confidence": conf,
+                            "box": box.xyxy[0].tolist()
+                        })
+                
+                if not detected_objects:
+                     yolo_message = "No objects detected by YOLOv8."
+                else:
+                    # Summarize detections
+                    counts = {}
+                    for obj in detected_objects:
+                        l = obj['label']
+                        counts[l] = counts.get(l, 0) + 1
+                    
+                    summary_str = ", ".join([f"{k}: {v}" for k, v in counts.items()])
+                    yolo_message = f"YOLOv8 detected: {summary_str}"
             
-            summary_str = ", ".join([f"{k}: {v}" for k, v in counts.items()])
-            
-            return {
-                "detected_objects": detected_objects,
-                "message": f"YOLOv8 detected: {summary_str}"
-            }
-            
+            except Exception as e:
+                yolo_message = f"Error running YOLOv8: {str(e)}"
+        else:
+             yolo_message = "YOLO model failed to load."
+
+        # 2. Fallback/Augmentation: CV-based Weed Detection
+        # If YOLO misses weeds (common with standard models), try heuristic
+        try:
+            cv_weeds = self._detect_weeds_cv(image)
+            if cv_weeds:
+                detected_objects.extend(cv_weeds)
+                yolo_message += f" | CV detected {len(cv_weeds)} potential weeds."
         except Exception as e:
-            return {
-                "detected_objects": [],
-                "message": f"Error running YOLOv8: {str(e)}"
-            }
+            print(f"CV weed detection error: {e}")
+
+        return {
+            "detected_objects": detected_objects,
+            "message": yolo_message
+        }
+
+    def _detect_weeds_cv(self, image: np.ndarray):
+        """
+        Heuristic weed detection using computer vision (Morphological operations on Green Mask).
+        Useful when grass is dormant (brown) and weeds are green, or for broadleaf weeds in green grass.
+        """
+        # Convert to HSV
+        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        
+        # Define green range (broad range for vegetation)
+        # Adjusting slightly to catch more variety
+        lower_green = np.array([30, 30, 30])
+        upper_green = np.array([90, 255, 255])
+        mask = cv2.inRange(hsv, lower_green, upper_green)
+        
+        # Morphological Opening to remove thin grass blades/noise
+        # Kernel size 3x3 or 5x5. 
+        kernel = np.ones((3,3), np.uint8) 
+        opened = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+        
+        # Dilate to merge close components
+        dilated = cv2.dilate(opened, kernel, iterations=2)
+        
+        # Find contours
+        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        detected = []
+        min_area = 50   # Minimum area (pixels)
+        max_area = (image.shape[0] * image.shape[1]) * 0.3 # Max 30% of screen (avoid detecting whole lawn)
+
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if min_area < area < max_area:
+                x, y, w, h = cv2.boundingRect(cnt)
+                detected.append({
+                    "label": "Weed (CV)",
+                    "confidence": 0.65,
+                    "box": [float(x), float(y), float(x+w), float(y+h)]
+                })
+        
+        return detected
 
     def segment_semantic(self, image: np.ndarray):
         """
