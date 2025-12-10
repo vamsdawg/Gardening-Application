@@ -547,10 +547,10 @@ if page == "Lawn Care":
         if weed_count == 0:
             weed_status = "No weeds detected"
             weed_icon = "✅"
-        elif weed_count <= 2:
+        elif weed_count <= 5:
             weed_status = "Small amounts of weeds detected"
             weed_icon = "⚠️"
-        elif weed_count <= 5:
+        elif weed_count <= 10:
             weed_status = "Weeds detected"
             weed_icon = "🌿"
         else:
