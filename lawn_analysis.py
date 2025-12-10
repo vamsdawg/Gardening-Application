@@ -17,9 +17,16 @@ class LawnAnalyzer:
     """
     
     def __init__(self):
-        # Initialize YOLOv8 model (using nano version for speed)
+        # Initialize YOLOv8 model
+        # Prioritize our custom trained model if it exists
         try:
-            self.yolo_model = YOLO('yolov8n.pt')
+            custom_model_path = 'models/weed_detector.pt'
+            if os.path.exists(custom_model_path):
+                print(f"Loading custom weed detector from {custom_model_path}...")
+                self.yolo_model = YOLO(custom_model_path)
+            else:
+                print("Custom model not found. Loading standard YOLOv8n model...")
+                self.yolo_model = YOLO('yolov8n.pt')
         except Exception as e:
             print(f"Warning: Could not load YOLO model: {e}")
             self.yolo_model = None
