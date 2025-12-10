@@ -1,4 +1,9 @@
-{
+import json
+import os
+
+filepath = r"g:\DSBA\DSBA 6211\Project\Gardening-Application\models\train_weed_detector.ipynb"
+
+content = {
  "cells": [
   {
    "cell_type": "markdown",
@@ -22,7 +27,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": None,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -47,19 +52,9 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 1,
+   "execution_count": None,
    "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Could not find kaggle.json. Make sure it's located in C:\\Users\\Matt Shaver\\.kaggle. Or use the environment method. See setup instructions at https://github.com/Kaggle/kaggle-api/\n",
-      "Could not download automatically: name 'exit' is not defined\n",
-      "Please manually download the dataset to: G:\\DSBA\\DSBA 6211\\Project\\Gardening-Application\\datasets\\weeds-detection\n"
-     ]
-    }
-   ],
+   "outputs": [],
    "source": [
     "import os\n",
     "from pathlib import Path\n",
@@ -95,19 +90,9 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 2,
+   "execution_count": None,
    "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Checking contents of G:\\DSBA\\DSBA 6211\\Project\\Gardening-Application\\datasets\\weeds-detection...\n",
-      "data.yaml\n",
-      "Warning: Train path G:\\DSBA\\DSBA 6211\\Project\\Gardening-Application\\datasets\\weeds-detection\\train\\images does not exist. Check the unzipped structure.\n"
-     ]
-    }
-   ],
+   "outputs": [],
    "source": [
     "# Verify structure\n",
     "print(f\"Checking contents of {dataset_dir}...\")\n",
@@ -136,17 +121,9 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 3,
+   "execution_count": None,
    "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Created configuration at G:\\DSBA\\DSBA 6211\\Project\\Gardening-Application\\datasets\\weeds-detection\\data.yaml\n"
-     ]
-    }
-   ],
+   "outputs": [],
    "source": [
     "import yaml\n",
     "\n",
@@ -181,7 +158,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": None,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -202,7 +179,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": None,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -228,7 +205,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": None,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -248,7 +225,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": None,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -289,3 +266,6 @@
  "nbformat": 4,
  "nbformat_minor": 2
 }
+
+with open(filepath, 'w') as f:
+    json.dump(content, f, indent=1)
