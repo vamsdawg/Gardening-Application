@@ -542,6 +542,23 @@ if page == "Lawn Care":
              
         st.write(f"**Bald Spots (No Growth):** {bald_frac*100:.1f}%")
         
+        # Weed Detection Logic
+        weed_count = len(weed_results.get('detected_objects', []))
+        if weed_count == 0:
+            weed_status = "No weeds detected"
+            weed_icon = "✅"
+        elif weed_count <= 2:
+            weed_status = "Small amounts of weeds detected"
+            weed_icon = "⚠️"
+        elif weed_count <= 5:
+            weed_status = "Weeds detected"
+            weed_icon = "🌿"
+        else:
+            weed_status = "Lots of weeds detected"
+            weed_icon = "🚨"
+        
+        st.write(f"**Weed Detection:** {weed_icon} {weed_status}")
+        
         if USE_LLM and GEMINI_API_KEY:
             # Display LLM-generated recommendations
             if isinstance(summary, dict) and 'recommendations' in summary:
