@@ -533,18 +533,26 @@ if page == "Lawn Care":
                         # Determine store logo and search URL
                         store = summary.get('store', 'Lowe\'s')
                         product_name = summary.get('product_name', '')
-                        item_number = summary.get('item_number', '')
+                        item_number = summary.get('item_number')
                         
-                        # Use direct product URL if available, otherwise fallback to search
-                        if summary.get('product_url'):
-                            search_url = summary.get('product_url')
-                        else:
-                            # Prefer item number for search if available
-                            query = item_number if item_number else product_name
+                        # Generate Search URL
+                        # Priority 1: Item Number (Most accurate search)
+                        if item_number:
+                            query = str(item_number).strip()
                             if "Home Depot" in store:
-                                search_url = f"https://www.homedepot.com/s/{query.replace(' ', '%20')}"
+                                search_url = f"https://www.homedepot.com/s/{query}"
                             else:
-                                search_url = f"https://www.lowes.com/search?searchTerm={query.replace(' ', '%20')}"
+                                search_url = f"https://www.lowes.com/search?searchTerm={query}"
+                        # Priority 2: Direct Product URL from LLM
+                        elif summary.get('product_url'):
+                            search_url = summary.get('product_url')
+                        # Priority 3: Product Name Search
+                        else:
+                            query = product_name.replace(' ', '%20')
+                            if "Home Depot" in store:
+                                search_url = f"https://www.homedepot.com/s/{query}"
+                            else:
+                                search_url = f"https://www.lowes.com/search?searchTerm={query}"
                         
                         # Product Name (Centered, Bold, Title Font)
                         st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
