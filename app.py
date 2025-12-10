@@ -520,13 +520,12 @@ if page == "Lawn Care":
         st.write(f"**Dead Grass (Light Brown):** {dead_frac*100:.1f}%")
         st.write(f"**Bald Spots (No Growth):** {bald_frac*100:.1f}%")
         
-        st.markdown("### 💡 Recommendations")
-        
         if USE_LLM and GEMINI_API_KEY:
             # Display LLM-generated recommendations
             if isinstance(summary, dict) and 'recommendations' in summary:
                 rec_col, prod_col = st.columns([2, 1])
                 with rec_col:
+                    st.markdown("### 💡 Recommendations")
                     st.markdown(summary['recommendations'])
                 with prod_col:
                     if summary.get('product_name'):
@@ -585,6 +584,7 @@ if page == "Lawn Care":
                         
                         st.link_button(f"🛍️ Buy at {store_name}", search_url, type="primary", use_container_width=True)
             else:
+                st.markdown("### 💡 Recommendations")
                 st.markdown(summary)
             
             if lawn_prompt:
@@ -592,6 +592,7 @@ if page == "Lawn Care":
                 st.caption("💡 Your concerns were analyzed and incorporated into the recommendations above.")
         else:
             # Fallback when LLM is not configured
+            st.markdown("### 💡 Recommendations")
             if isinstance(summary, dict):
                 st.info(summary['recommendations'])
             else:
