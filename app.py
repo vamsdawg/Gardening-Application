@@ -261,7 +261,7 @@ IMPORTANT: Output your response as a valid JSON object with these keys:
 4. "reason": A brief explanation of why this product is recommended.
 5. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
 6. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
-7. "product_url": A direct link to purchase the product from the recommended store (Lowe's or Home Depot).
+7. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
 
 Example JSON format:
 {
@@ -271,7 +271,7 @@ Example JSON format:
   "reason": "Contains the right mix of...",
   "usage_instructions": "1. Apply to dry lawn... 2. Water immediately...",
   "image_url": "https://...",
-  "product_url": "https://..."
+  "product_url": "https://www.lowes.com/pd/Scotts-Turf-Builder-..."
 }
 """
     
