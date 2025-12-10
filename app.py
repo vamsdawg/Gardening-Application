@@ -262,7 +262,7 @@ IMPORTANT: Output your response in valid JSON format containing these keys:
 3. "store": Either "Lowe's" or "Home Depot".
 4. "item_number": The specific Store SKU (for Lowe's) or Internet # (for Home Depot) for the product. This is REQUIRED for the search link to work.
 5. "reason": A brief explanation of why this product is recommended.
-6. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
+6. "usage_instructions": Detailed, step-by-step application instructions. Include preparation (e.g., mow first?), application method (spreader settings if applicable), watering requirements after application, and safety precautions.
 7. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
 8. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
 
@@ -560,8 +560,8 @@ if page == "Lawn Care":
                         
                         # How to use
                         if summary.get('usage_instructions'):
-                            st.markdown("#### 📋 How to use")
-                            st.write(summary['usage_instructions'])
+                            with st.expander("📋 How to use (Click to expand)"):
+                                st.write(summary['usage_instructions'])
                         
                         # Buy at: Button
                         if is_home_depot:
