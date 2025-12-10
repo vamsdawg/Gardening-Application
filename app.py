@@ -219,37 +219,51 @@ LAWN ANALYSIS:
         prompt += f"\nUSER'S CONCERN:\n{user_observation}\n"
     
     prompt += """
-PROVIDE BRIEF LAWN CARE RECOMMENDATIONS:
+PROVIDE BRIEF LAWN CARE RECOMMENDATIONS using this specific Markdown format:
 
-1. **🌿 Lawn Health Summary** (1-2 sentences)
+1. **🌿 Lawn Health Summary**
+   - (Provide a 1-2 sentence summary here)
 
 2. **✂️ Mowing Advice**
-   - Should I mow now? (yes/no and why)
-   - Recommended mowing height
+   - **Should I mow now?**
+     - (Yes/No and explanation)
+   - **Recommended mowing height:**
+     - (Specific height advice)
 
 3. **💧 Watering**
-   - Frequency and amount
-   - Best time of day
+   - **Frequency and amount:**
+     - (Advice)
+   - **Best time of day:**
+     - (Advice)
 
 4. **🌱 Fertilization & Treatment**
-   - Fertilizer recommendation (type and timing)
-   - Any treatments needed?
+   - **Fertilizer recommendation:**
+     - (Type and timing)
+   - **Treatments needed:**
+     - (Advice)
 
 5. **⚠️ Problem Areas**
-   - What's causing brown patches?
-   - Quick fix steps
+   - **Cause of brown patches:**
+     - (Diagnosis)
+   - **Quick fix steps:**
+     - (Step 1)
+     - (Step 2)
 """
     
     if user_observation:
         prompt += f"""
 6. **🔧 Your Concern: "{user_observation}"**
-   - Diagnosis
-   - Action steps
+   - **Diagnosis:**
+     - (Diagnosis)
+   - **Action steps:**
+     - (Steps)
 """
     else:
         prompt += """
 6. **💡 Quick Tips**
-   - 3 key actions for this season
+   - (Tip 1)
+   - (Tip 2)
+   - (Tip 3)
 """
     
     prompt += """
