@@ -192,7 +192,9 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
     return {
         'success': True,
         'recommendations': "\n".join(recs),
-        'product_rec': None
+        'product_name': None,
+        'store': None,
+        'reason': None
     }
 
 def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
@@ -249,14 +251,18 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS:
 """
     
     prompt += """
-IMPORTANT: Output your response as a valid JSON object with exactly two keys:
+IMPORTANT: Output your response as a valid JSON object with these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
-2. "product_recommendation": A markdown string recommending ONE specific product from Lowe's or Home Depot that addresses the main issue. Include the product name and a brief reason why.
+2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
+3. "store": Either "Lowe's" or "Home Depot".
+4. "reason": A brief explanation of why this product is recommended.
 
 Example JSON format:
 {
   "care_guide": "1. **Summary**...",
-  "product_recommendation": "**Recommended Product:** Scott's Turf Builder..."
+  "product_name": "Scotts Turf Builder",
+  "store": "Lowe's",
+  "reason": "Contains the right mix of..."
 }
 """
     
@@ -276,7 +282,9 @@ Example JSON format:
         return {
             'success': True,
             'recommendations': data.get('care_guide', 'No guide generated.'),
-            'product_rec': data.get('product_recommendation', 'No product recommendation.')
+            'product_name': data.get('product_name'),
+            'store': data.get('store'),
+            'reason': data.get('reason')
         }
     except Exception as e:
         # Fallback: try to return raw text if JSON parsing fails but we got something
@@ -284,7 +292,9 @@ Example JSON format:
              return {
                 'success': True,
                 'recommendations': response.text,
-                'product_rec': None
+                'product_name': None,
+                'store': None,
+                'reason': None
             }
         return {
             'success': False,
@@ -345,9 +355,11 @@ def make_report_text(summary, metrics, meta, analysis_type):
     
     if isinstance(summary, dict):
         t.append(summary.get('recommendations', ''))
-        if summary.get('product_rec'):
+        if summary.get('product_name'):
             t.append("\nProduct Recommendation:")
-            t.append(summary['product_rec'])
+            t.append(f"Product: {summary['product_name']}")
+            t.append(f"Store: {summary['store']}")
+            t.append(f"Reason: {summary['reason']}")
     else:
         t.append(str(summary))
         
@@ -495,9 +507,26 @@ if page == "Lawn Care":
                 with rec_col:
                     st.markdown(summary['recommendations'])
                 with prod_col:
-                    if summary.get('product_rec'):
+                    if summary.get('product_name'):
                         st.info("🛍️ **Product Pick**")
-                        st.markdown(summary['product_rec'])
+                        
+                        # Determine store logo and search URL
+                        store = summary.get('store', 'Lowe\'s')
+                        product_name = summary.get('product_name', '')
+                        
+                        if "Home Depot" in store:
+                            logo_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/1200px-TheHomeDepot.svg.png"
+                            search_url = f"https://www.homedepot.com/s/{product_name.replace(' ', '%20')}"
+                        else:
+                            # Default to Lowe's
+                            logo_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/1200px-Lowes_Companies_Logo.svg.png"
+                            search_url = f"https://www.lowes.com/search?searchTerm={product_name.replace(' ', '%20')}"
+                        
+                        # Display clickable image
+                        st.markdown(f"[![Click to Buy]({logo_url})]({search_url})")
+                        st.markdown(f"**{product_name}**")
+                        st.caption(summary.get('reason', ''))
+                        st.markdown(f"[👉 Buy at {store}]({search_url})")
             else:
                 st.markdown(summary)
             
