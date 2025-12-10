@@ -516,7 +516,7 @@ if page == "Lawn Care":
                     st.markdown(summary['recommendations'])
                 with prod_col:
                     if summary.get('product_name'):
-                        st.markdown("### 🛍️ Recommended Product")
+                        st.markdown("### 🧹 Recommended Product")
                         
                         # Determine store logo and search URL
                         store = summary.get('store', 'Lowe\'s')
@@ -558,6 +558,11 @@ if page == "Lawn Care":
                         # Description (Normal writing)
                         st.write(summary.get('reason', ''))
                         
+                        # How to use
+                        if summary.get('usage_instructions'):
+                            st.markdown("#### 📋 How to use")
+                            st.write(summary['usage_instructions'])
+                        
                         # Buy at: Button
                         if is_home_depot:
                             store_name = "Home Depot"
@@ -565,11 +570,6 @@ if page == "Lawn Care":
                             store_name = "Lowe's"
                         
                         st.link_button(f"🛍️ Buy at {store_name}", search_url, type="primary", use_container_width=True)
-                        
-                        # How to use
-                        if summary.get('usage_instructions'):
-                            st.markdown("#### 📋 How to use")
-                            st.write(summary['usage_instructions'])
             else:
                 st.markdown(summary)
             
