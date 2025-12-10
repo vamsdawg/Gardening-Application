@@ -91,6 +91,7 @@ class LawnAnalyzer:
     def detect_weeds_yolo(self, image: np.ndarray):
         """
         Object Detection (YOLO): Identifies and locates objects using YOLOv8.
+        Uses 'models/weed_detector.pt' if available, otherwise falls back to standard YOLOv8n.
         """
         detected_objects = []
         yolo_message = ""
@@ -98,8 +99,9 @@ class LawnAnalyzer:
         # 1. Run YOLO if available
         if self.yolo_model:
             try:
-                # Run inference
-                results = self.yolo_model(image)
+                # Run inference with a confidence threshold
+                # Custom model might need a lower threshold if trained briefly
+                results = self.yolo_model(image, conf=0.25)
                 
                 for r in results:
                     boxes = r.boxes
@@ -108,9 +110,8 @@ class LawnAnalyzer:
                         conf = float(box.conf[0])
                         label = self.yolo_model.names[cls_id]
                         
-                        # Filter for relevant classes if using standard COCO model
-                        # COCO classes: 58=potted plant, but standard model isn't great for weeds.
-                        # We'll return everything for now so the user sees it works.
+                        # If using custom model, classes are likely 'crop' and 'weed'
+                        # If using standard model, we return all detections
                         detected_objects.append({
                             "label": label,
                             "confidence": conf,
