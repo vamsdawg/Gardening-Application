@@ -254,6 +254,8 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS:
 """
     
     prompt += """
+CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
+
 IMPORTANT: Output your response as a valid JSON object with these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
