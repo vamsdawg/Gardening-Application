@@ -3,6 +3,6 @@ names:
 - weed
 nc: 2
 path: G:\DSBA\DSBA 6211\Project\Gardening-Application\datasets\weeds-detection
-test: test/images
-train: train/images
-val: train/images
+test: images/test
+train: images/train
+val: images/val
