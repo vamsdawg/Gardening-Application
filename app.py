@@ -433,9 +433,9 @@ if page == "Lawn Care":
     with st.sidebar:
         st.subheader("Lawn Care Options:")
         last_mow_days = st.number_input("Days since last mow", min_value=0, max_value=365, value=14, key="lawn_mow")
-        lawn_season = st.selectbox("Season", ["spring", "summer", "autumn", "winter"], key="lawn_season")
+        lawn_season = st.selectbox("Season", ["Spring", "Summer", "Fall", "Winter"], key="lawn_season")
         lawn_prompt = st.text_area(
-            "Describe your lawn challenges or goals (optional)", 
+            "Describe your Lawn Challenges or Goals (optional)", 
             placeholder="e.g., Brown patches appearing, want thicker grass...",
             key="lawn_prompt"
         )
