@@ -255,12 +255,13 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS:
     
     prompt += """
 CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
+CRITICAL: You MUST provide the specific 'item_number' (SKU, Internet #, or Model #) for the product. This is used to generate the purchase link.
 
 IMPORTANT: Output your response as a valid JSON object with these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
 3. "store": Either "Lowe's" or "Home Depot".
-4. "item_number": The specific Store SKU, Internet #, or Item Number for the product at the selected store.
+4. "item_number": The specific Store SKU (for Lowe's) or Internet # (for Home Depot) for the product. This is REQUIRED for the search link to work.
 5. "reason": A brief explanation of why this product is recommended.
 6. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
 7. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
@@ -537,39 +538,54 @@ if page == "Lawn Care":
                         product_name = summary.get('product_name', '')
                         item_number = summary.get('item_number')
                         
+                        # Normalize store name for logic
+                        is_home_depot = "Home Depot" in store
+                        
                         # Generate Search URL
-                        # Priority 1: Item Number (Most accurate search)
-                        if item_number:
-                            query = str(item_number).strip()
-                            if "Home Depot" in store:
-                                search_url = f"https://www.homedepot.com/s/{query}"
+                        search_url = None
+                        
+                        # 1. Try Item Number (Best)
+                        if item_number and str(item_number).lower() not in ['none', 'n/a', '']:
+                            clean_item_num = str(item_number).strip()
+                            if is_home_depot:
+                                search_url = f"https://www.homedepot.com/s/{clean_item_num}"
                             else:
-                                search_url = f"https://www.lowes.com/search?searchTerm={query}"
-                        # Priority 2: Direct Product URL from LLM
-                        elif summary.get('product_url'):
+                                search_url = f"https://www.lowes.com/search?searchTerm={clean_item_num}"
+                        
+                        # 2. Try Direct Product URL from LLM
+                        if not search_url and summary.get('product_url'):
                             search_url = summary.get('product_url')
-                        # Priority 3: Product Name Search
-                        else:
-                            query = product_name.replace(' ', '%20')
-                            if "Home Depot" in store:
-                                search_url = f"https://www.homedepot.com/s/{query}"
+                            
+                        # 3. Fallback to Product Name Search
+                        if not search_url:
+                            clean_name = product_name.replace(' ', '%20')
+                            if is_home_depot:
+                                search_url = f"https://www.homedepot.com/s/{clean_name}"
                             else:
-                                search_url = f"https://www.lowes.com/search?searchTerm={query}"
+                                search_url = f"https://www.lowes.com/search?searchTerm={clean_name}"
                         
                         # Product Name (Centered, Bold, Title Font)
                         st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
                         
+                        # Display Item Number if available
+                        if item_number and str(item_number).lower() not in ['none', 'n/a', '']:
+                             st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.9em;'>Item #: {item_number}</p>", unsafe_allow_html=True)
+
                         # Description (Normal writing)
                         st.write(summary.get('reason', ''))
                         
                         # Buy at: Store Logo
                         st.markdown("**Buy at:**")
-                        if "Home Depot" in store:
-                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/100px-TheHomeDepot.svg.png"
+                        if is_home_depot:
+                            # Use direct SVG for better reliability
+                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/5/5f/TheHomeDepot.svg"
+                            store_name = "Home Depot"
                         else:
-                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/100px-Lowes_Companies_Logo.svg.png"
+                            # Use direct SVG for better reliability
+                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/2/2c/Lowes_Companies_Logo.svg"
+                            store_name = "Lowe's"
                         
-                        st.markdown(f'<a href="{search_url}" target="_blank"><img src="{store_logo}" width="100" style="border-radius: 5px;"></a>', unsafe_allow_html=True)
+                        st.markdown(f'<a href="{search_url}" target="_blank"><img src="{store_logo}" alt="Buy at {store_name}" width="100" style="border-radius: 5px;"></a>', unsafe_allow_html=True)
                         
                         # How to use
                         if summary.get('usage_instructions'):
