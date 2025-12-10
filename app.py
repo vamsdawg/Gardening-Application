@@ -258,16 +258,18 @@ IMPORTANT: Output your response as a valid JSON object with these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
 3. "store": Either "Lowe's" or "Home Depot".
-4. "reason": A brief explanation of why this product is recommended.
-5. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
-6. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
-7. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
+4. "item_number": The specific Store SKU, Internet #, or Item Number for the product at the selected store.
+5. "reason": A brief explanation of why this product is recommended.
+6. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
+7. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
+8. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
 
 Example JSON format:
 {
   "care_guide": "1. **Summary**...",
   "product_name": "Scotts Turf Builder",
   "store": "Lowe's",
+  "item_number": "123456",
   "reason": "Contains the right mix of...",
   "usage_instructions": "1. Apply to dry lawn... 2. Water immediately...",
   "image_url": "https://...",
@@ -293,6 +295,7 @@ Example JSON format:
             'recommendations': data.get('care_guide', 'No guide generated.'),
             'product_name': data.get('product_name'),
             'store': data.get('store'),
+            'item_number': data.get('item_number'),
             'reason': data.get('reason'),
             'usage_instructions': data.get('usage_instructions'),
             'image_url': data.get('image_url'),
@@ -530,14 +533,18 @@ if page == "Lawn Care":
                         # Determine store logo and search URL
                         store = summary.get('store', 'Lowe\'s')
                         product_name = summary.get('product_name', '')
+                        item_number = summary.get('item_number', '')
                         
                         # Use direct product URL if available, otherwise fallback to search
                         if summary.get('product_url'):
                             search_url = summary.get('product_url')
-                        elif "Home Depot" in store:
-                            search_url = f"https://www.homedepot.com/s/{product_name.replace(' ', '%20')}"
                         else:
-                            search_url = f"https://www.lowes.com/search?searchTerm={product_name.replace(' ', '%20')}"
+                            # Prefer item number for search if available
+                            query = item_number if item_number else product_name
+                            if "Home Depot" in store:
+                                search_url = f"https://www.homedepot.com/s/{query.replace(' ', '%20')}"
+                            else:
+                                search_url = f"https://www.lowes.com/search?searchTerm={query.replace(' ', '%20')}"
                         
                         # Product Name (Centered, Bold, Title Font)
                         st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
