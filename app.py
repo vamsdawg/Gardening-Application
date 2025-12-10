@@ -525,7 +525,7 @@ if page == "Lawn Care":
                     st.markdown(summary['recommendations'])
                 with prod_col:
                     if summary.get('product_name'):
-                        st.info("🛍️ **Product Pick**")
+                        st.markdown("### 🛍️ Recommended Product")
                         
                         # Determine store logo and search URL
                         store = summary.get('store', 'Lowe\'s')
@@ -539,54 +539,25 @@ if page == "Lawn Care":
                         else:
                             search_url = f"https://www.lowes.com/search?searchTerm={product_name.replace(' ', '%20')}"
                         
-                        # Display clickable image
-                        # Dynamic Brand Logo Logic
-                        product_lower = product_name.lower()
-                        image_url = None
+                        # Product Name (Centered, Bold, Title Font)
+                        st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
                         
-                        # Common Lawn/Garden Brands -> Logo URLs (Wikimedia/Official)
-                        brand_map = {
-                            "scotts": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Scotts_Miracle-Gro_Company_Logo.svg/400px-Scotts_Miracle-Gro_Company_Logo.svg.png",
-                            "miracle-gro": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Scotts_Miracle-Gro_Company_Logo.svg/400px-Scotts_Miracle-Gro_Company_Logo.svg.png",
-                            "kobalt": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Kobalt_Tools_Logo.svg/400px-Kobalt_Tools_Logo.svg.png",
-                            "sherwin-williams": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Sherwin-Williams_logo.svg/400px-Sherwin-Williams_logo.svg.png",
-                            "toro": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Toro_Company_Logo.svg/400px-Toro_Company_Logo.svg.png",
-                            "ryobi": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Ryobi_Logo.svg/400px-Ryobi_Logo.svg.png",
-                            "craftsman": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Craftsman_logo.svg/400px-Craftsman_logo.svg.png",
-                            "dewalt": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/DeWalt_Logo.svg/400px-DeWalt_Logo.svg.png",
-                            "black+decker": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Black%2BDecker_Logo.svg/400px-Black%2BDecker_Logo.svg.png",
-                            "honda": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Honda.svg/400px-Honda.svg.png",
-                            "husqvarna": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Husqvarna_logo.svg/400px-Husqvarna_logo.svg.png",
-                            "stihl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Stihl_Logo.svg/400px-Stihl_Logo.svg.png",
-                            "john deere": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/John_Deere_logo.svg/400px-John_Deere_logo.svg.png",
-                            "ego": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/EGO_Power_Plus_logo.svg/400px-EGO_Power_Plus_logo.svg.png",
-                            "worx": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Worx_logo.svg/400px-Worx_logo.svg.png",
-                            "greenworks": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Greenworks_Tools_Logo.svg/400px-Greenworks_Tools_Logo.svg.png",
-                            "milwaukee": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Milwaukee_Electric_Tool_logo.svg/400px-Milwaukee_Electric_Tool_logo.svg.png",
-                            "makita": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Makita_Logo.svg/400px-Makita_Logo.svg.png",
-                            "vigoro": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/200px-TheHomeDepot.svg.png", # Owned by HD
-                            "sta-green": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/200px-Lowes_Companies_Logo.svg.png", # Owned by Lowes
-                        }
+                        # Description (Normal writing)
+                        st.write(summary.get('reason', ''))
                         
-                        for brand, url in brand_map.items():
-                            if brand in product_lower:
-                                image_url = url
-                                break
+                        # Buy at: Store Logo
+                        st.markdown("**Buy at:**")
+                        if "Home Depot" in store:
+                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/100px-TheHomeDepot.svg.png"
+                        else:
+                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/100px-Lowes_Companies_Logo.svg.png"
                         
-                        # Fallback to store logo if no brand matched
-                        if not image_url:
-                            if "Home Depot" in store:
-                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/200px-TheHomeDepot.svg.png"
-                            else:
-                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/200px-Lowes_Companies_Logo.svg.png"
-
-                        st.markdown(f"[![Click to Buy]({image_url})]({search_url})")
-                        st.markdown(f"**{product_name}**")
-                        st.caption(summary.get('reason', ''))
+                        st.markdown(f'<a href="{search_url}" target="_blank"><img src="{store_logo}" width="100" style="border-radius: 5px;"></a>', unsafe_allow_html=True)
                         
+                        # How to use
                         if summary.get('usage_instructions'):
-                            with st.expander("📋 How to use", expanded=True):
-                                st.markdown(summary['usage_instructions'])
+                            st.markdown("#### 📋 How to use")
+                            st.write(summary['usage_instructions'])
             else:
                 st.markdown(summary)
             
