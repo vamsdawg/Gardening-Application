@@ -7,3 +7,4 @@ google-generativeai
 requests
 python-dotenv
 streamlit-cropper
+ultralytics

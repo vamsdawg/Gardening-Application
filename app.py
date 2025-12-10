@@ -127,11 +127,18 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
     elif green_pct > 0.15:
         health_status = "Patchy with moderate coverage"
     else:
-        health_status = "Poor with low green coverage"
+        # Check for winter dormancy
+        if season.lower() == "winter" and dead_pct > 0.3:
+             health_status = "Dormant (Normal for Winter)"
+        else:
+             health_status = "Poor with low green coverage"
     
     total_brown = dead_pct + bald_pct
     if total_brown > 0.05:
-        brown_status = f"Significant issues detected (Dead: {dead_pct*100:.1f}%, Bald: {bald_pct*100:.1f}%)"
+        if season.lower() == "winter":
+             brown_status = f"Winter Dormancy Detected (Dormant: {dead_pct*100:.1f}%, Bald: {bald_pct*100:.1f}%)"
+        else:
+             brown_status = f"Significant issues detected (Dead: {dead_pct*100:.1f}%, Bald: {bald_pct*100:.1f}%)"
     else:
         brown_status = "Minimal browning or bald spots"
     
@@ -476,22 +483,21 @@ if page == "Lawn Care":
         with st.spinner("Analyzing lawn..."):
             analyzer = get_lawn_analyzer()
             
-            # 1. Color/Texture Analysis (HSV)
+            # 1. Semantic Segmentation (U-Net or Heuristic)
             analysis_results = analyzer.analyze_health(arr)
             
             green_frac = analysis_results['green_coverage_pct']
             dead_frac = analysis_results['dead_grass_pct']
             bald_frac = analysis_results['bald_spots_pct']
-            mask = analysis_results['masks']['green']
             
-            # 2. Object Detection (YOLO) - Placeholder
+            # 2. Object Detection (YOLO)
             weed_results = analyzer.detect_weeds_yolo(arr)
             
             # 3. Species Identification (DCNN) - Placeholder
             species_results = analyzer.identify_species_dcnn(arr)
             
-            # Create combined overlay
-            overlay = analyzer.overlay_masks(arr, analysis_results['masks'])
+            # Get overlay from analysis results
+            overlay = analysis_results['overlay']
 
             
             metrics = {
@@ -528,7 +534,12 @@ if page == "Lawn Care":
         
         st.markdown("### 📊 Analysis Results")
         st.write(f"**Green coverage (Healthy):** {green_frac*100:.1f}%")
-        st.write(f"**Dead Grass (Light Brown):** {dead_frac*100:.1f}%")
+        
+        if lawn_season.lower() == "winter":
+             st.write(f"**Dormant Grass (Winter):** {dead_frac*100:.1f}%")
+        else:
+             st.write(f"**Dead Grass (Light Brown):** {dead_frac*100:.1f}%")
+             
         st.write(f"**Bald Spots (No Growth):** {bald_frac*100:.1f}%")
         
         if USE_LLM and GEMINI_API_KEY:
@@ -618,10 +629,10 @@ if page == "Lawn Care":
                 st.info("💡 Enable LLM integration to get personalized analysis of your lawn concerns.")
         
         # Downloads
-        mask_pil = Image.fromarray(mask)
-        buf_mask = io.BytesIO()
-        mask_pil.save(buf_mask, format="PNG")
-        st.download_button("Download mask", data=buf_mask.getvalue(), file_name="lawn_mask.png", mime="image/png")
+        # mask_pil = Image.fromarray(mask)
+        # buf_mask = io.BytesIO()
+        # mask_pil.save(buf_mask, format="PNG")
+        # st.download_button("Download mask", data=buf_mask.getvalue(), file_name="lawn_mask.png", mime="image/png")
         
         report = make_report_text(summary, metrics, meta, "Lawn Care")
         st.download_button("Download report", data=report, file_name="lawn_report.txt", mime="text/plain")
