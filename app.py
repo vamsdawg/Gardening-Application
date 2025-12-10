@@ -41,7 +41,8 @@ if not GEMINI_API_KEY:
     st.error("⚠️ GEMINI_API_KEY not found. Please add it to Streamlit secrets or .env file.")
 
 # --- Model Loading ---
-@st.cache_resource
+##@st.cache_resource
+st.cache_resource.clear()
 def load_plant_model():
     """Load the trained plant classification model"""
     try:
