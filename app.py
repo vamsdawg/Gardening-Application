@@ -268,6 +268,8 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS using this specific Markdown format:
     
     prompt += """
 CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
+CRITICAL: Make sure the product recommended is able to be purchased. 
+CRITICAL: Make sure the product is specifically suited for lawn care based on the analysis above.
 
 IMPORTANT: Output your response in valid JSON format containing these keys:
 1. "care_guide": A markdown string containing the numbered sections 1-6 above.
@@ -557,10 +559,27 @@ if page == "Lawn Care":
                         # Buy at: Button
                         if is_home_depot:
                             store_name = "Home Depot"
+                            btn_color = "#F96302"
                         else:
                             store_name = "Lowe's"
+                            btn_color = "#004990"
                         
-                        st.link_button(f"🛍️ Buy at {store_name}", search_url, type="primary", use_container_width=True)
+                        st.markdown(f"""
+                            <a href="{search_url}" target="_blank" style="
+                                display: block;
+                                width: 100%;
+                                padding: 10px;
+                                background-color: {btn_color};
+                                color: white !important;
+                                text-align: center;
+                                text-decoration: none;
+                                border-radius: 8px;
+                                font-weight: bold;
+                                margin-top: 5px;
+                            ">
+                                🛍️ Buy at {store_name}
+                            </a>
+                        """, unsafe_allow_html=True)
             else:
                 st.markdown("### 💡 Recommendations")
                 st.markdown(summary)
