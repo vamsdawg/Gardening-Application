@@ -460,9 +460,9 @@ if page == "Lawn Care":
         if lawn_uploaded:
             st.write("Crop the image to select the lawn area:")
             # Load image for cropping
-            img = Image.open(lawn_uploaded)
+            img = Image.open(lawn_uploaded).convert('RGB')
             # Get cropped image from user
-            cropped_img = st_cropper(img, realtime_update=True, box_color='#00FF00', aspect_ratio=None)
+            cropped_img = st_cropper(img, realtime_update=True, box_color='#000000', aspect_ratio=None)
             
             # Show analyze button only when image is uploaded
             if st.button("🔍 Analyze Lawn", key="lawn_submit_main"):
