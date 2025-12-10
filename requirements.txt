@@ -6,4 +6,3 @@ tensorflow
 google-generativeai
 requests
 python-dotenv
-PIL
