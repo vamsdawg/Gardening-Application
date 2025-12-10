@@ -565,11 +565,10 @@ if page == "Lawn Care":
                                 search_url = f"https://www.lowes.com/search?searchTerm={clean_name}"
                         
                         # Product Name (Centered, Bold, Title Font)
-                        st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
-                        
-                        # Display Item Number if available
                         if item_number and str(item_number).lower() not in ['none', 'n/a', '']:
-                             st.markdown(f"<p style='text-align: center; color: gray; font-size: 0.9em;'>Item #: {item_number}</p>", unsafe_allow_html=True)
+                             st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name} <span style='font-size: 0.8em; color: gray; font-weight: normal;'>(Item #: {item_number})</span></h3>", unsafe_allow_html=True)
+                        else:
+                             st.markdown(f"<h3 style='text-align: center; font-weight: bold;'>{product_name}</h3>", unsafe_allow_html=True)
 
                         # Description (Normal writing)
                         st.write(summary.get('reason', ''))
