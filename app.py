@@ -196,7 +196,8 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
         'store': None,
         'reason': None,
         'usage_instructions': None,
-        'image_url': None
+        'image_url': None,
+        'product_url': None
     }
 
 def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
@@ -260,6 +261,7 @@ IMPORTANT: Output your response as a valid JSON object with these keys:
 4. "reason": A brief explanation of why this product is recommended.
 5. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
 6. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
+7. "product_url": A direct link to purchase the product from the recommended store (Lowe's or Home Depot).
 
 Example JSON format:
 {
@@ -268,7 +270,8 @@ Example JSON format:
   "store": "Lowe's",
   "reason": "Contains the right mix of...",
   "usage_instructions": "1. Apply to dry lawn... 2. Water immediately...",
-  "image_url": "https://..."
+  "image_url": "https://...",
+  "product_url": "https://..."
 }
 """
     
@@ -292,7 +295,8 @@ Example JSON format:
             'store': data.get('store'),
             'reason': data.get('reason'),
             'usage_instructions': data.get('usage_instructions'),
-            'image_url': data.get('image_url')
+            'image_url': data.get('image_url'),
+            'product_url': data.get('product_url')
         }
     except Exception as e:
         # Fallback: try to return raw text if JSON parsing fails but we got something
@@ -304,7 +308,8 @@ Example JSON format:
                 'store': None,
                 'reason': None,
                 'usage_instructions': None,
-                'image_url': None
+                'image_url': None,
+                'product_url': None
             }
         return {
             'success': False,
@@ -526,19 +531,54 @@ if page == "Lawn Care":
                         store = summary.get('store', 'Lowe\'s')
                         product_name = summary.get('product_name', '')
                         
-                        if "Home Depot" in store:
+                        # Use direct product URL if available, otherwise fallback to search
+                        if summary.get('product_url'):
+                            search_url = summary.get('product_url')
+                        elif "Home Depot" in store:
                             search_url = f"https://www.homedepot.com/s/{product_name.replace(' ', '%20')}"
                         else:
                             search_url = f"https://www.lowes.com/search?searchTerm={product_name.replace(' ', '%20')}"
                         
                         # Display clickable image
-                        image_url = summary.get('image_url')
+                        # Dynamic Brand Logo Logic
+                        product_lower = product_name.lower()
+                        image_url = None
+                        
+                        # Common Lawn/Garden Brands -> Logo URLs (Wikimedia/Official)
+                        brand_map = {
+                            "scotts": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Scotts_Miracle-Gro_Company_Logo.svg/400px-Scotts_Miracle-Gro_Company_Logo.svg.png",
+                            "miracle-gro": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Scotts_Miracle-Gro_Company_Logo.svg/400px-Scotts_Miracle-Gro_Company_Logo.svg.png",
+                            "kobalt": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Kobalt_Tools_Logo.svg/400px-Kobalt_Tools_Logo.svg.png",
+                            "sherwin-williams": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Sherwin-Williams_logo.svg/400px-Sherwin-Williams_logo.svg.png",
+                            "toro": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Toro_Company_Logo.svg/400px-Toro_Company_Logo.svg.png",
+                            "ryobi": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Ryobi_Logo.svg/400px-Ryobi_Logo.svg.png",
+                            "craftsman": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Craftsman_logo.svg/400px-Craftsman_logo.svg.png",
+                            "dewalt": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/DeWalt_Logo.svg/400px-DeWalt_Logo.svg.png",
+                            "black+decker": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Black%2BDecker_Logo.svg/400px-Black%2BDecker_Logo.svg.png",
+                            "honda": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Honda.svg/400px-Honda.svg.png",
+                            "husqvarna": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Husqvarna_logo.svg/400px-Husqvarna_logo.svg.png",
+                            "stihl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Stihl_Logo.svg/400px-Stihl_Logo.svg.png",
+                            "john deere": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/John_Deere_logo.svg/400px-John_Deere_logo.svg.png",
+                            "ego": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/EGO_Power_Plus_logo.svg/400px-EGO_Power_Plus_logo.svg.png",
+                            "worx": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Worx_logo.svg/400px-Worx_logo.svg.png",
+                            "greenworks": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Greenworks_Tools_Logo.svg/400px-Greenworks_Tools_Logo.svg.png",
+                            "milwaukee": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Milwaukee_Electric_Tool_logo.svg/400px-Milwaukee_Electric_Tool_logo.svg.png",
+                            "makita": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Makita_Logo.svg/400px-Makita_Logo.svg.png",
+                            "vigoro": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/200px-TheHomeDepot.svg.png", # Owned by HD
+                            "sta-green": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/200px-Lowes_Companies_Logo.svg.png", # Owned by Lowes
+                        }
+                        
+                        for brand, url in brand_map.items():
+                            if brand in product_lower:
+                                image_url = url
+                                break
+                        
+                        # Fallback to store logo if no brand matched
                         if not image_url:
-                            # Fallback to store logo if no specific product image
                             if "Home Depot" in store:
-                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/1200px-TheHomeDepot.svg.png"
+                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/200px-TheHomeDepot.svg.png"
                             else:
-                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/1200px-Lowes_Companies_Logo.svg.png"
+                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/200px-Lowes_Companies_Logo.svg.png"
 
                         st.markdown(f"[![Click to Buy]({image_url})]({search_url})")
                         st.markdown(f"**{product_name}**")
