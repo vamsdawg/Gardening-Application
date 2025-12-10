@@ -16,6 +16,7 @@ import tensorflow as tf
 # ---------- your local/project modules (no pip) ----------
 from plantnet_api import PlantNetAPI
 from gemini_llm import PlantCareLLM
+from lawn_analysis import LawnAnalyzer
 
 # Load environment variables from .env file
 load_dotenv()
@@ -74,24 +75,12 @@ def get_llm_client():
         st.error(f"Failed to initialize Gemini LLM: {str(e)}")
         return None
 
+@st.cache_resource
+def get_lawn_analyzer():
+    """Initialize and cache LawnAnalyzer"""
+    return LawnAnalyzer()
+
 # --- Helper Functions ---
-def segment_green_cv(image: np.ndarray, lower_h=35, upper_h=85, sat_min=40, val_min=40, morph_k=7):
-    """Quick HSV-based green segmentation; returns binary mask (uint8 0/255)."""
-    hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-    lower = np.array([lower_h, sat_min, val_min], dtype=np.uint8)
-    upper = np.array([upper_h, 255, 255], dtype=np.uint8)
-    mask = cv2.inRange(hsv, lower, upper)
-    # Morphological cleanup
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (morph_k, morph_k))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    return mask
-
-def overlay_mask(image: np.ndarray, mask: np.ndarray, color=(0, 255, 0), alpha=0.5):
-    colored = image.copy()
-    colored[mask > 0] = (np.array(color) * alpha + colored[mask > 0] * (1 - alpha)).astype(np.uint8)
-    return colored
-
 def percent_coverage(mask: np.ndarray):
     total = mask.size
     covered = (mask > 0).sum()
@@ -128,7 +117,7 @@ def classify_plant_plantnet(image: np.ndarray, api_key):
             'message': f'PlantNet API error: {str(e)}'
         }
 
-def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_observation=""):
+def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_observation="", advanced_analysis=None):
     """Generate lawn care recommendations using LLM or fallback to rules"""
     
     # Build basic analysis
@@ -160,7 +149,8 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
                     health_status=health_status,
                     brown_status=brown_status,
                     season=season,
-                    user_observation=user_observation
+                    user_observation=user_observation,
+                    advanced_analysis=advanced_analysis
                 )
                 if result['success']:
                     return result
@@ -200,7 +190,7 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
         'product_url': None
     }
 
-def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
+def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation, advanced_analysis=None):
     """Generate lawn care recommendations using Gemini LLM"""
     
     # Build the prompt
@@ -216,6 +206,15 @@ LAWN ANALYSIS:
 - Current Season: {season}
 """
     
+    if advanced_analysis:
+        prompt += "\nADVANCED COMPUTER VISION ANALYSIS:\n"
+        if 'weeds' in advanced_analysis:
+            prompt += f"- Weed Detection (YOLO): {advanced_analysis['weeds']}\n"
+        if 'species' in advanced_analysis:
+            prompt += f"- Species Identification (DCNN): {advanced_analysis['species']}\n"
+        if 'segmentation' in advanced_analysis:
+            prompt += f"- Semantic Segmentation: {advanced_analysis['segmentation']}\n"
+
     if user_observation:
         prompt += f"\nUSER'S CONCERN:\n{user_observation}\n"
     
@@ -450,46 +449,26 @@ if page == "Lawn Care":
         image = Image.open(st.session_state.lawn_image).convert("RGB")
         arr = np.array(image)
         
-        # Segmentation parameters
-        lower_h, upper_h, sat_min, val_min, morph_k = 35, 85, 40, 40, 7
-        bald_prob_thresh = 145
-        dead_upper_thresh = 165
-        
         with st.spinner("Analyzing lawn..."):
-            mask = segment_green_cv(arr, lower_h, upper_h, sat_min, val_min, morph_k)
+            analyzer = get_lawn_analyzer()
             
-            # Calculate raw pixel counts
-            green_pixels = np.count_nonzero(mask)
+            # 1. Color/Texture Analysis (HSV)
+            analysis_results = analyzer.analyze_health(arr)
             
-            gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+            green_frac = analysis_results['green_coverage_pct']
+            dead_frac = analysis_results['dead_grass_pct']
+            bald_frac = analysis_results['bald_spots_pct']
+            mask = analysis_results['masks']['green']
             
-            # Dead Grass (Light Brown): Not green, and brightness between bald_thresh and dead_upper
-            dead_mask = (mask == 0) & (gray >= bald_prob_thresh) & (gray < dead_upper_thresh)
-            dead_pixels = np.count_nonzero(dead_mask)
+            # 2. Object Detection (YOLO) - Placeholder
+            weed_results = analyzer.detect_weeds_yolo(arr)
             
-            # Bald Spots (Dark Brown/Soil): Not green, and brightness < bald_thresh
-            bald_mask = (mask == 0) & (gray < bald_prob_thresh)
-            bald_pixels = np.count_nonzero(bald_mask)
+            # 3. Species Identification (DCNN) - Placeholder
+            species_results = analyzer.identify_species_dcnn(arr)
             
             # Create combined overlay
-            # 1. Healthy Green Grass -> Green (0, 200, 0)
-            overlay = overlay_mask(arr, mask, color=(0, 200, 0), alpha=0.4)
-            # 2. Dead Grass -> Yellow (255, 255, 0)
-            overlay = overlay_mask(overlay, dead_mask, color=(255, 255, 0), alpha=0.4)
-            # 3. Bald Spots -> Red (255, 0, 0)
-            overlay = overlay_mask(overlay, bald_mask, color=(255, 0, 0), alpha=0.4)
-            
-            # Normalize to lawn area only (Green + Dead + Bald)
-            total_lawn_pixels = green_pixels + dead_pixels + bald_pixels
-            
-            if total_lawn_pixels > 0:
-                green_frac = green_pixels / total_lawn_pixels
-                dead_frac = dead_pixels / total_lawn_pixels
-                bald_frac = bald_pixels / total_lawn_pixels
-            else:
-                green_frac = 0.0
-                dead_frac = 0.0
-                bald_frac = 0.0
+            overlay = analyzer.overlay_masks(arr, analysis_results['masks'])
+
             
             metrics = {
                 "green_coverage_pct": f"{green_frac*100:.1f}%",
@@ -502,13 +481,20 @@ if page == "Lawn Care":
                 "user_notes": lawn_prompt if lawn_prompt else "None"
             }
             
+            # Prepare advanced analysis data for LLM
+            advanced_analysis = {
+                'weeds': weed_results,
+                'species': species_results
+            }
+            
             summary = lawn_rule_engine(
                 green_frac, 
                 dead_frac,
                 bald_frac,
                 last_mow_days, 
                 lawn_season,
-                user_observation=lawn_prompt if lawn_prompt else ""
+                user_observation=lawn_prompt if lawn_prompt else "",
+                advanced_analysis=advanced_analysis
             )
         
         # Display results
@@ -573,21 +559,13 @@ if page == "Lawn Care":
                         # Description (Normal writing)
                         st.write(summary.get('reason', ''))
                         
-                        # Buy at: Store Logo
-                        st.markdown("**Buy at:**")
+                        # Buy at: Button
                         if is_home_depot:
-                            # Use PNG thumbnail for better compatibility
-                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/200px-TheHomeDepot.svg.png"
                             store_name = "Home Depot"
                         else:
-                            # Use PNG thumbnail for better compatibility
-                            store_logo = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/200px-Lowes_Companies_Logo.svg.png"
                             store_name = "Lowe's"
                         
-                        # Logo with link
-                        st.markdown(f'<a href="{search_url}" target="_blank"><img src="{store_logo}" alt="Buy at {store_name}" width="100" style="border-radius: 5px;"></a>', unsafe_allow_html=True)
-                        # Text link backup
-                        st.markdown(f'<a href="{search_url}" target="_blank" style="text-decoration: none; font-size: 0.9em; color: #0066cc;">Click here to buy at {store_name}</a>', unsafe_allow_html=True)
+                        st.link_button(f"🛍️ Buy at {store_name}", search_url, type="primary", use_container_width=True)
                         
                         # How to use
                         if summary.get('usage_instructions'):
