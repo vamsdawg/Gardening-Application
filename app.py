@@ -195,7 +195,8 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
         'product_name': None,
         'store': None,
         'reason': None,
-        'usage_instructions': None
+        'usage_instructions': None,
+        'image_url': None
     }
 
 def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
@@ -258,6 +259,7 @@ IMPORTANT: Output your response as a valid JSON object with these keys:
 3. "store": Either "Lowe's" or "Home Depot".
 4. "reason": A brief explanation of why this product is recommended.
 5. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
+6. "image_url": A valid, publicly accessible URL to an image of the specific product. Prefer high-quality images from the manufacturer (e.g., scotts.com) or major retailers.
 
 Example JSON format:
 {
@@ -265,7 +267,8 @@ Example JSON format:
   "product_name": "Scotts Turf Builder",
   "store": "Lowe's",
   "reason": "Contains the right mix of...",
-  "usage_instructions": "1. Apply to dry lawn... 2. Water immediately..."
+  "usage_instructions": "1. Apply to dry lawn... 2. Water immediately...",
+  "image_url": "https://..."
 }
 """
     
@@ -288,7 +291,8 @@ Example JSON format:
             'product_name': data.get('product_name'),
             'store': data.get('store'),
             'reason': data.get('reason'),
-            'usage_instructions': data.get('usage_instructions')
+            'usage_instructions': data.get('usage_instructions'),
+            'image_url': data.get('image_url')
         }
     except Exception as e:
         # Fallback: try to return raw text if JSON parsing fails but we got something
@@ -299,7 +303,8 @@ Example JSON format:
                 'product_name': None,
                 'store': None,
                 'reason': None,
-                'usage_instructions': None
+                'usage_instructions': None,
+                'image_url': None
             }
         return {
             'success': False,
@@ -522,15 +527,20 @@ if page == "Lawn Care":
                         product_name = summary.get('product_name', '')
                         
                         if "Home Depot" in store:
-                            logo_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/1200px-TheHomeDepot.svg.png"
                             search_url = f"https://www.homedepot.com/s/{product_name.replace(' ', '%20')}"
                         else:
-                            # Default to Lowe's
-                            logo_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/1200px-Lowes_Companies_Logo.svg.png"
                             search_url = f"https://www.lowes.com/search?searchTerm={product_name.replace(' ', '%20')}"
                         
                         # Display clickable image
-                        st.markdown(f"[![Click to Buy]({logo_url})]({search_url})")
+                        image_url = summary.get('image_url')
+                        if not image_url:
+                            # Fallback to store logo if no specific product image
+                            if "Home Depot" in store:
+                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/TheHomeDepot.svg/1200px-TheHomeDepot.svg.png"
+                            else:
+                                image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Lowes_Companies_Logo.svg/1200px-Lowes_Companies_Logo.svg.png"
+
+                        st.markdown(f"[![Click to Buy]({image_url})]({search_url})")
                         st.markdown(f"**{product_name}**")
                         st.caption(summary.get('reason', ''))
                         
