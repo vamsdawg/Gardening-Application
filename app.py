@@ -194,7 +194,8 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
         'recommendations': "\n".join(recs),
         'product_name': None,
         'store': None,
-        'reason': None
+        'reason': None,
+        'usage_instructions': None
     }
 
 def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation):
@@ -256,13 +257,15 @@ IMPORTANT: Output your response as a valid JSON object with these keys:
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
 3. "store": Either "Lowe's" or "Home Depot".
 4. "reason": A brief explanation of why this product is recommended.
+5. "usage_instructions": Specific, step-by-step instructions on how to apply or use this product for the current lawn condition.
 
 Example JSON format:
 {
   "care_guide": "1. **Summary**...",
   "product_name": "Scotts Turf Builder",
   "store": "Lowe's",
-  "reason": "Contains the right mix of..."
+  "reason": "Contains the right mix of...",
+  "usage_instructions": "1. Apply to dry lawn... 2. Water immediately..."
 }
 """
     
@@ -284,7 +287,8 @@ Example JSON format:
             'recommendations': data.get('care_guide', 'No guide generated.'),
             'product_name': data.get('product_name'),
             'store': data.get('store'),
-            'reason': data.get('reason')
+            'reason': data.get('reason'),
+            'usage_instructions': data.get('usage_instructions')
         }
     except Exception as e:
         # Fallback: try to return raw text if JSON parsing fails but we got something
@@ -294,7 +298,8 @@ Example JSON format:
                 'recommendations': response.text,
                 'product_name': None,
                 'store': None,
-                'reason': None
+                'reason': None,
+                'usage_instructions': None
             }
         return {
             'success': False,
@@ -360,6 +365,8 @@ def make_report_text(summary, metrics, meta, analysis_type):
             t.append(f"Product: {summary['product_name']}")
             t.append(f"Store: {summary['store']}")
             t.append(f"Reason: {summary['reason']}")
+            if summary.get('usage_instructions'):
+                t.append(f"\nUsage Instructions:\n{summary['usage_instructions']}")
     else:
         t.append(str(summary))
         
@@ -526,7 +533,10 @@ if page == "Lawn Care":
                         st.markdown(f"[![Click to Buy]({logo_url})]({search_url})")
                         st.markdown(f"**{product_name}**")
                         st.caption(summary.get('reason', ''))
-                        st.markdown(f"[👉 Buy at {store}]({search_url})")
+                        
+                        if summary.get('usage_instructions'):
+                            with st.expander("📋 How to use"):
+                                st.markdown(summary['usage_instructions'])
             else:
                 st.markdown(summary)
             
