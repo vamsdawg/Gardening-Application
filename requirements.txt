@@ -6,7 +6,6 @@ tensorflow
 google-generativeai
 requests
 python-dotenv
-streamlit-cropper
 ultralytics
-
 streamlit-drawable-canvas
+protobuf==3.20.3
