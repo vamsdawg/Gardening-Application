@@ -102,7 +102,7 @@ class LawnAnalyzer:
                 # Run inference with a lower confidence threshold to catch more potential weeds
                 # Custom model might need a lower threshold if trained briefly
                 print("Running YOLO inference...")
-                results = self.yolo_model(image, conf=0.15)
+                results = self.yolo_model(image, conf=0.20)
                 
                 for r in results:
                     boxes = r.boxes
