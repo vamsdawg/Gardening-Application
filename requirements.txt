@@ -8,4 +8,3 @@ requests
 python-dotenv
 ultralytics
 streamlit-drawable-canvas
-protobuf==3.20.3
