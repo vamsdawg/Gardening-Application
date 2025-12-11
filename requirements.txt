@@ -8,3 +8,5 @@ requests
 python-dotenv
 streamlit-cropper
 ultralytics
+
+streamlit-drawable-canvas

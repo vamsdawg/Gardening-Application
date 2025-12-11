@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # ---------- third-party imports ----------
 import streamlit as st
-from streamlit_cropper import st_cropper
+from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 import numpy as np
 import cv2
@@ -449,17 +449,49 @@ if page == "Lawn Care":
         )
         
         if lawn_uploaded:
-            st.write("Crop the image to select the lawn area:")
-            # Load image for cropping
+            st.write("🖌️ **Draw** over the lawn area you want to analyze:")
+            # Load image
             img = Image.open(lawn_uploaded).convert('RGB')
-            # Get cropped image from user
-            cropped_img = st_cropper(img, realtime_update=True, box_color='#000000', aspect_ratio=None)
             
-            # Show analyze button only when image is uploaded
+            # Resize for UI if too large (improves canvas performance)
+            max_width = 700
+            if img.width > max_width:
+                ratio = max_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((max_width, new_height))
+            
+            # Canvas for drawing mask
+            canvas_result = st_canvas(
+                fill_color="rgba(255, 255, 255, 0.3)",  # White transparent fill
+                stroke_width=20,
+                stroke_color="#ffffff",
+                background_image=img,
+                update_streamlit=True,
+                height=img.height,
+                width=img.width,
+                drawing_mode="freedraw",
+                key="canvas",
+            )
+            
+            # Show analyze button
             if st.button("🔍 Analyze Lawn", key="lawn_submit_main"):
-                st.session_state.lawn_analyzed = True
-                st.session_state.lawn_image = cropped_img
-                st.rerun()
+                if canvas_result.image_data is not None:
+                    # Get the mask (Alpha channel)
+                    mask = canvas_result.image_data[:, :, 3]
+                    
+                    # If user didn't draw anything, use whole image
+                    if np.max(mask) == 0:
+                        st.warning("No area selected! Analyzing the entire image.")
+                        masked_img = np.array(img)
+                    else:
+                        # Apply mask
+                        img_array = np.array(img)
+                        # Create masked image (keep drawn area, black out rest)
+                        masked_img = cv2.bitwise_and(img_array, img_array, mask=mask.astype(np.uint8))
+                    
+                    st.session_state.lawn_analyzed = True
+                    st.session_state.lawn_image = Image.fromarray(masked_img)
+                    st.rerun()
     
     # Show results if analyzed
     if st.session_state.lawn_analyzed and 'lawn_image' in st.session_state:
