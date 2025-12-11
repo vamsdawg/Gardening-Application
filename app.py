@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # ---------- third-party imports ----------
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
+from streamlit_cropper import st_cropper
 from PIL import Image
 import numpy as np
 import cv2
@@ -118,7 +118,7 @@ def classify_plant_plantnet(image: np.ndarray, api_key):
             'message': f'PlantNet API error: {str(e)}'
         }
 
-def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_observation="", advanced_analysis=None):
+def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, grass_type="Unknown", user_observation="", advanced_analysis=None):
     """Generate lawn care recommendations using LLM or fallback to rules"""
     
     # Build basic analysis
@@ -157,6 +157,7 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
                     health_status=health_status,
                     brown_status=brown_status,
                     season=season,
+                    grass_type=grass_type,
                     user_observation=user_observation,
                     advanced_analysis=advanced_analysis
                 )
@@ -198,13 +199,14 @@ def lawn_rule_engine(green_pct, dead_pct, bald_pct, last_mow_days, season, user_
         'product_url': None
     }
 
-def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, user_observation, advanced_analysis=None):
+def generate_lawn_care_recommendations(llm, green_coverage, dead_coverage, bald_coverage, last_mow_days, health_status, brown_status, season, grass_type, user_observation, advanced_analysis=None):
     """Generate lawn care recommendations using Gemini LLM"""
     
     # Build the prompt
     prompt = f"""You are an expert lawn care specialist, turfgrass scientist, and landscape management professional. Your role is to provide highly accurate, region-appropriate, and concise lawn care recommendations based on the identified turf type, visible conditions, and symptoms.
 
 LAWN ANALYSIS:
+- Grass Type: {grass_type}
 - Healthy Grass: {green_coverage*100:.1f}%
 - Dead/Diseased Grass: {dead_coverage*100:.1f}%
 - Bald Spots (Soil/No Growth): {bald_coverage*100:.1f}%
@@ -226,61 +228,45 @@ LAWN ANALYSIS:
     if user_observation:
         prompt += f"\nUSER'S CONCERN:\n{user_observation}\n"
     
-    prompt += """
+    prompt += f"""
 PROVIDE BRIEF LAWN CARE RECOMMENDATIONS using this specific Markdown format:
 
 1. **🌿 Lawn Health Summary**
-   - (Provide a 1-2 sentence summary here)
+   - (Provide a 1-2 sentence summary here, mentioning the grass type if known)
 
 2. **✂️ Mowing Advice**
    - **Should I mow now?**
      - (Yes/No and explanation)
    - **Recommended mowing height:**
-     - (Specific height advice)
+     - (Specific height advice for {grass_type})
 
 3. **💧 Watering**
    - **Frequency and amount:**
-     - (Advice)
+     - (Advice based on {grass_type} needs)
    - **Best time of day:**
      - (Advice)
 
 4. **🌱 Fertilization & Treatment**
    - **Fertilizer recommendation:**
-     - (Type and timing)
+     - (Type and timing for {grass_type})
    - **Treatments needed:**
-     - (Advice)
+     - (Address any weeds or diseases found)
 
-5. **⚠️ Problem Areas**
-   - **Cause of brown patches:**
-     - (Diagnosis)
-   - **Quick fix steps:**
-     - (Step 1)
-     - (Step 2)
-"""
-    
-    if user_observation:
-        prompt += f"""
-6. **🔧 Your Concern: "{user_observation}"**
-   - **Diagnosis:**
-     - (Diagnosis)
-   - **Action steps:**
-     - (Steps)
-"""
-    else:
-        prompt += """
-6. **💡 Quick Tips**
-   - (Tip 1)
-   - (Tip 2)
-   - (Tip 3)
-"""
-    
-    prompt += """
+5. **⚠️ Weed Control (If applicable)**
+   - (Specific advice for the weeds detected, safe for {grass_type})
+
+RECOMMEND A SPECIFIC PRODUCT (Fertilizer, Weed Killer, or Seed):
+- Choose a real product available at Lowe's or Home Depot.
+- If weeds are detected, prioritize a weed control product safe for {grass_type}.
+- If bald spots are high, recommend a seed mix suitable for {grass_type}.
+- Otherwise, recommend a fertilizer.
+
 CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
 CRITICAL: Make sure the product recommended is able to be purchased. 
 CRITICAL: Make sure the product is specifically suited for lawn care based on the analysis above.
 
 IMPORTANT: Output your response in valid JSON format containing these keys:
-1. "care_guide": A markdown string containing the numbered sections 1-6 above.
+1. "care_guide": A markdown string containing the numbered sections 1-5 above.
 2. "product_name": The specific name of the recommended product (e.g., "Scotts Turf Builder").
 3. "store": Either "Lowe's" or "Home Depot".
 4. "reason": A brief explanation of why this product is recommended.
@@ -289,7 +275,7 @@ IMPORTANT: Output your response in valid JSON format containing these keys:
 7. "product_url": A direct, valid URL to the specific product page on lowes.com or homedepot.com. Do NOT use a search URL. Ensure the link points to the actual item (e.g. https://www.homedepot.com/p/...).
 
 Example JSON format:
-{
+{{
   "care_guide": "1. **Summary**...",
   "product_name": "Scotts Turf Builder",
   "store": "Lowe's",
@@ -297,7 +283,7 @@ Example JSON format:
   "usage_instructions": "1. Apply to dry lawn... 2. Water immediately...",
   "image_url": "https://...",
   "product_url": "https://www.lowes.com/pd/Scotts-Turf-Builder-..."
-}
+}}
 """
     
     try:
@@ -442,6 +428,11 @@ if page == "Lawn Care":
         st.subheader("Lawn Care Options:")
         last_mow_days = st.number_input("Days since last mow", min_value=0, max_value=365, value=14, key="lawn_mow")
         lawn_season = st.selectbox("Season", ["Spring", "Summer", "Fall", "Winter"], key="lawn_season")
+        grass_type = st.selectbox(
+            "Grass Type", 
+            ["Unknown", "Bermuda", "Fescue", "St. Augustine", "Zoysia", "Kentucky Bluegrass", "Ryegrass", "Centipede", "Bahia"],
+            key="grass_type"
+        )
         lawn_prompt = st.text_area(
             "Describe your Lawn Challenges or Goals (optional)", 
             placeholder="e.g., Brown patches appearing, want thicker grass...",
@@ -458,49 +449,17 @@ if page == "Lawn Care":
         )
         
         if lawn_uploaded:
-            st.write("🖌️ **Draw** over the lawn area you want to analyze:")
-            # Load image
+            st.write("Crop the image to select the lawn area:")
+            # Load image for cropping
             img = Image.open(lawn_uploaded).convert('RGB')
+            # Get cropped image from user
+            cropped_img = st_cropper(img, realtime_update=True, box_color='#000000', aspect_ratio=None)
             
-            # Resize for UI if too large (improves canvas performance)
-            max_width = 700
-            if img.width > max_width:
-                ratio = max_width / img.width
-                new_height = int(img.height * ratio)
-                img = img.resize((max_width, new_height))
-            
-            # Canvas for drawing mask
-            canvas_result = st_canvas(
-                fill_color="rgba(255, 255, 255, 0.3)",  # White transparent fill
-                stroke_width=20,
-                stroke_color="#ffffff",
-                background_image=img,
-                update_streamlit=True,
-                height=img.height,
-                width=img.width,
-                drawing_mode="freedraw",
-                key="canvas",
-            )
-            
-            # Show analyze button
+            # Show analyze button only when image is uploaded
             if st.button("🔍 Analyze Lawn", key="lawn_submit_main"):
-                if canvas_result.image_data is not None:
-                    # Get the mask (Alpha channel)
-                    mask = canvas_result.image_data[:, :, 3]
-                    
-                    # If user didn't draw anything, use whole image
-                    if np.max(mask) == 0:
-                        st.warning("No area selected! Analyzing the entire image.")
-                        masked_img = np.array(img)
-                    else:
-                        # Apply mask
-                        img_array = np.array(img)
-                        # Create masked image (keep drawn area, black out rest)
-                        masked_img = cv2.bitwise_and(img_array, img_array, mask=mask.astype(np.uint8))
-                    
-                    st.session_state.lawn_analyzed = True
-                    st.session_state.lawn_image = Image.fromarray(masked_img)
-                    st.rerun()
+                st.session_state.lawn_analyzed = True
+                st.session_state.lawn_image = cropped_img
+                st.rerun()
     
     # Show results if analyzed
     if st.session_state.lawn_analyzed and 'lawn_image' in st.session_state:
@@ -555,6 +514,7 @@ if page == "Lawn Care":
                 bald_frac,
                 last_mow_days, 
                 lawn_season,
+                grass_type=grass_type,
                 user_observation=lawn_prompt if lawn_prompt else "",
                 advanced_analysis=advanced_analysis
             )
