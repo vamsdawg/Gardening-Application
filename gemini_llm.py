@@ -23,9 +23,7 @@ class PlantCareLLM:
         plant_common_names: list,
         plant_family: str,
         plant_genus: str,
-        user_observation: Optional[str] = None,
-        season: Optional[str] = None,
-        confidence: Optional[float] = None
+        user_observation: Optional[str] = None
     ) -> Dict:
         """
         Generate comprehensive plant care recommendations
@@ -36,8 +34,6 @@ class PlantCareLLM:
             plant_family: Plant family
             plant_genus: Plant genus
             user_observation: User's description of issues/concerns
-            season: Current season
-            confidence: Identification confidence (0-1)
             
         Returns:
             Dictionary with care recommendations
