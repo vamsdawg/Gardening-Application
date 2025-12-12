@@ -15,7 +15,7 @@ import cv2
 import tensorflow as tf
 
 # ---------- your local/project modules (no pip) ----------
-from plantnet_api import PlantNetAPI
+from plantnet_api import PlantNetAPI, classify_plant_with_health
 from gemini_llm import PlantCareLLM
 from lawn_analysis import LawnAnalyzer
 
@@ -328,7 +328,7 @@ Example JSON format:
             'error': str(e)
         }
 
-def plant_rule_engine(plant_name, plant_data=None, user_observation="", season="Spring"):
+def plant_rule_engine(plant_name, plant_data=None, user_observation="", disease_data=None):
     """Generate plant care recommendations using LLM or fallback"""
     if not USE_LLM or not GEMINI_API_KEY:
         return f"Plant identified as: **{plant_name.replace('_', ' ').title()}**\n\nDetailed care recommendations will be available with LLM integration."
@@ -354,15 +354,24 @@ def plant_rule_engine(plant_name, plant_data=None, user_observation="", season="
             genus = 'Unknown'
             confidence = 0.0
         
-        # Generate recommendations using Gemini
+        # Extract disease data if available
+        disease_name = None
+        disease_confidence = None
+        if disease_data and disease_data.get('success') and disease_data.get('has_disease'):
+            top_disease = disease_data.get('top_disease', {})
+            disease_name = top_disease.get('label', None)
+            disease_confidence = top_disease.get('confidence', None)
+        
+        # Generate recommendations using Gemini (with disease info if available)
         result = llm.generate_plant_care_recommendations(
             plant_scientific_name=scientific_name,
             plant_common_names=common_names,
             plant_family=family,
             plant_genus=genus,
             user_observation=user_observation,
-            season=season,
-            confidence=confidence
+            confidence=confidence,
+            disease_name=disease_name,
+            disease_confidence=disease_confidence
         )
         
         if result['success']:
@@ -653,7 +662,7 @@ if page == "Lawn Care":
             st.rerun()
 
 elif page == "Plant Care":
-    st.title("🌱 Plant Species Identification")
+    st.title("🌱 Plant Identification & Care Recommendations")
     
     # Initialize session state for plant analysis
     if 'plant_analyzed' not in st.session_state:
@@ -716,100 +725,195 @@ elif page == "Plant Care":
         active_api_key = st.session_state.get('plantnet_key', PLANTNET_API_KEY)
         use_plantnet_now = USE_PLANTNET and active_api_key
         
-        with st.spinner("Identifying plant..."):
+        with st.spinner("Analyzing plant health..."):
+            disease_data = None
+            
             if use_plantnet_now:
-                # Use PlantNet API
-                result = classify_plant_plantnet(arr, active_api_key)
+                # Use comprehensive health analysis (species + disease)
+                health_result = classify_plant_with_health(arr, active_api_key)
                 
-                if result['success']:
-                    top = result['top_result']
-                    plant_name = top['scientific_name']
-                    confidence = top['confidence']
-                    all_results = result['all_results']
-                    common_names = top['common_names']
-                    family = top['family']
-                    genus = top['genus']
-                    method = "PlantNet API"
+                if health_result.get('combined_success'):
+                    # Extract species data
+                    species_result = health_result.get('species', {})
+                    if species_result.get('success'):
+                        top = species_result['top_result']
+                        plant_name = top['scientific_name']
+                        confidence = top['confidence']
+                        all_results = species_result['all_results']
+                        common_names = top['common_names']
+                        family = top['family']
+                        genus = top['genus']
+                        method = "PlantNet API"
+                        result = species_result  # For backward compatibility
+                    else:
+                        plant_name = "Unknown"
+                        confidence = 0.0
+                        all_results = []
+                        common_names = []
+                        family = "Unknown"
+                        genus = "Unknown"
+                        method = "PlantNet API (species failed)"
+                        result = {'success': False, 'message': 'Species identification failed'}
+                    
+                    # Extract disease data
+                    disease_data = health_result.get('disease', {})
                 else:
                     plant_name = "Unknown"
                     confidence = 0.0
                     all_results = []
-                    error_msg = result.get('message', 'Unknown error')
+                    common_names = []
+                    family = "Unknown"
+                    genus = "Unknown"
+                    error_msg = "Health analysis failed"
                     method = "PlantNet API (failed)"
+                    result = {'success': False, 'message': error_msg}
             else:
                 # Use custom model
                 if plant_model is not None:
                     plant_name, confidence, predictions = classify_plant(arr, plant_model, class_indices)
                     method = "Custom Model"
+                    result = {'success': True}
                 else:
                     plant_name, confidence = "Unknown", 0.0
                     predictions = None
                     method = "No model available"
+                    result = {'success': False}
             
             metrics = {
                 "plant_species": plant_name if plant_name else "Unknown",
                 "confidence": f"{confidence*100:.1f}%" if confidence > 0 else "N/A",
                 "method": method
             }
+            
+            # Add disease info to metrics if available
+            if disease_data and disease_data.get('success') and disease_data.get('has_disease'):
+                top_disease = disease_data['top_disease']
+                metrics["health_status"] = f"⚠️ Issue Detected: {top_disease['label']}"
+                metrics["disease_confidence"] = top_disease['confidence_pct']
+            elif disease_data and disease_data.get('success'):
+                metrics["health_status"] = "✅ Healthy"
+            
             meta = {
                 "user_notes": plant_prompt if plant_prompt else "None"
             }
             
-            # Determine current season (basic approximation)
-            current_month = datetime.now().month
-            if current_month in [3, 4, 5]:
-                season = "Spring"
-            elif current_month in [6, 7, 8]:
-                season = "Summer"
-            elif current_month in [9, 10, 11]:
-                season = "Fall"
-            else:
-                season = "Winter"
-            
-            # Pass PlantNet result data to rule engine for LLM
+            # Pass both species and disease data to rule engine for LLM
             plant_data = result if use_plantnet_now else None
             summary = plant_rule_engine(
                 plant_name if plant_name else "Unknown",
                 plant_data=plant_data,
                 user_observation=plant_prompt if plant_prompt else "",
-                season=season
+                disease_data=disease_data
             )
         
         # Display results
         st.image(image, caption="Uploaded Plant Image", use_container_width=True)
         
-        st.markdown("### 🔍 Plant Identification")
+        # Create columns for better layout
+        col1, col2 = st.columns([2, 1])
         
-        if use_plantnet_now and result['success']:
-            # PlantNet results
-            st.success(f"**{plant_name}**")
+        with col1:
+            st.markdown("### 🌿 Plant Identification")
             
-            # Common names
-            if common_names:
-                st.write(f"**Common names:** {', '.join(common_names[:3])}")
-            
-            st.write(f"**Family:** {family}")
-            st.write(f"**Genus:** {genus}")
-            st.write(f"**Confidence:** {confidence*100:.1f}%")
-            
-            # Show all results
-            if len(all_results) > 1:
-                st.markdown("**Alternative matches:**")
-                for r in all_results[1:]:
-                    common = ', '.join(r['common_names'][:2]) if r['common_names'] else 'No common name'
-                    st.write(f"{r['rank']}. **{r['scientific_name']}** ({common}) - {r['confidence_pct']}")
-            
-            # API credits
-            remaining = result['query_info'].get('remaining_credits', 'Unknown')
-            st.caption(f"🌐 Identified via PlantNet | Remaining API calls today: {remaining}")
-            
-        elif use_plantnet_now and not result['success']:
+            if use_plantnet_now and result['success']:
+                # PlantNet results - Enhanced display
+                # Main identification with badge
+                st.markdown(f"#### **{plant_name}**")
+                
+                # Common names in a nice format
+                if common_names:
+                    st.markdown(f"*{', '.join(common_names[:3])}*")
+                
+                # Confidence badge
+                if confidence >= 0.9:
+                    conf_color = "🟢"
+                    conf_label = "High"
+                elif confidence >= 0.7:
+                    conf_color = "🟡"
+                    conf_label = "Good"
+                else:
+                    conf_color = "🟠"
+                    conf_label = "Moderate"
+                
+                st.markdown(f"{conf_color} **Confidence:** {confidence*100:.1f}% ({conf_label})")
+                
+                # Taxonomy info in expandable section
+                with st.expander("📚 Taxonomy Details"):
+                    st.write(f"**Family:** {family}")
+                    st.write(f"**Genus:** {genus}")
+                    st.write(f"**Scientific Name:** {plant_name}")
+                
+                # Show alternative matches in expandable section
+                if len(all_results) > 1:
+                    with st.expander(f"🔍 Alternative Matches ({len(all_results)-1})"):
+                        for r in all_results[1:]:
+                            common = ', '.join(r['common_names'][:2]) if r['common_names'] else 'No common name'
+                            st.write(f"**{r['rank']}.** {r['scientific_name']}")
+                            st.write(f"   _{common}_ - Confidence: {r['confidence_pct']}")
+                            st.write("")
+                
+                # API credits
+                remaining = result['query_info'].get('remaining_credits', 'Unknown')
+                st.caption(f"🌐 PlantNet API | Credits remaining: {remaining}")
+        
+        with col2:
+            # Health Status Card - Enhanced visual design
+            if disease_data and disease_data.get('success'):
+                st.markdown("### 🏥 Health Status")
+                
+                if disease_data.get('has_disease'):
+                    top_disease = disease_data['top_disease']
+                    disease_conf = top_disease['confidence']
+                    
+                    # Severity badge based on confidence
+                    if disease_conf >= 0.7:
+                        severity = "High Confidence"
+                        severity_color = "🔴"
+                    elif disease_conf >= 0.4:
+                        severity = "Medium Confidence"
+                        severity_color = "🟡"
+                    else:
+                        severity = "Low Confidence"
+                        severity_color = "🟠"
+                    
+                    # Disease alert box
+                    st.error(f"⚠️ **Issue Detected**")
+                    st.markdown(f"**{top_disease['label']}**")
+                    st.markdown(f"{severity_color} {severity}")
+                    st.progress(disease_conf)
+                    st.caption(f"Detection: {top_disease['confidence_pct']}")
+                    
+                    # Show alternative disease possibilities
+                    if len(disease_data.get('all_results', [])) > 1:
+                        with st.expander("Other possible issues"):
+                            for d in disease_data['all_results'][1:3]:
+                                st.write(f"• {d['label']}")
+                                st.caption(f"  {d['confidence_pct']}")
+                    
+                    # Quick action tips
+                    st.info("💡 See treatment recommendations below")
+                else:
+                    # Healthy plant display
+                    st.success("✅ **Healthy**")
+                    st.markdown("No diseases detected")
+                    st.markdown("---")
+                    st.markdown("**Prevention Tips:**")
+                    st.caption("• Monitor regularly")
+                    st.caption("• Maintain proper care")
+                    st.caption("• Watch for changes")
+        
+        # Full-width section for recommendations
+        st.markdown("---")
+        
+        # Handle different result scenarios
+        if use_plantnet_now and not result.get('success'):
             # PlantNet error
-            st.error(f"❌ {result['error']}")
-            st.warning(result['message'])
+            st.error(f"❌ {result.get('error', 'Unknown error')}")
+            st.warning(result.get('message', 'Identification failed'))
             
-        elif plant_name and confidence > 0:
+        elif not use_plantnet_now and plant_name and confidence > 0:
             # Custom model results
+            st.markdown("### 🔍 Plant Identification")
             st.success(f"**{plant_name.replace('_', ' ').title()}**")
             st.write(f"**Confidence:** {confidence*100:.1f}%")
             st.warning("⚠️ Limited to 30 plant types. For broader identification, add a PlantNet API key!")
@@ -822,40 +926,66 @@ elif page == "Plant Care":
                     pred_name = class_indices[str(idx)].replace('_', ' ').title()
                     pred_conf = predictions[idx] * 100
                     st.write(f"- {pred_name}: {pred_conf:.1f}%")
-        else:
-            st.warning("Plant identification unavailable")
         
-        st.markdown("### 📊 Care Recommendations")
+        elif not plant_name or confidence == 0:
+            st.warning("⚠️ Plant identification unavailable")
+        
+        # Care Recommendations Section - Enhanced
+        st.markdown("---")
+        
+        # Add visual indicator based on disease status
+        if disease_data and disease_data.get('success') and disease_data.get('has_disease'):
+            st.markdown("### � Treatment Plan & Care")
+            st.info("🔬 **Disease-specific treatment recommendations below**")
+        else:
+            st.markdown("### 🌱 Care Recommendations")
+            st.success("💚 **Preventive care and maintenance tips below**")
         
         if USE_LLM and GEMINI_API_KEY:
-            # Display LLM-generated recommendations
-            st.markdown(summary)
+            # Display LLM-generated recommendations in a nice container
+            with st.container():
+                st.markdown(summary)
             
-            if plant_prompt:
-                st.markdown("---")
-                st.caption(" Your observations were analyzed and incorporated into the recommendations above.")
+            # Show analysis context
+            if plant_prompt or (disease_data and disease_data.get('has_disease')):
+                with st.expander("ℹ️ Analysis Context"):
+                    if disease_data and disease_data.get('has_disease'):
+                        st.write("✓ Disease detection data analyzed")
+                    if plant_prompt:
+                        st.write("✓ Your observations incorporated")
+                        st.caption(f'"{plant_prompt}"')
         else:
             # Fallback when LLM is not configured
             st.info(summary)
-            st.info("🚀 **Enable LLM Integration:** Add your Gemini API key to get:\n"
-                   "- Detailed watering schedules\n"
-                   "- Specific sunlight requirements\n"
-                   "- Soil recommendations\n"
-                   "- Pest & disease identification\n"
-                   "- Harvest timing guidance\n"
-                   "- Personalized care based on your observations")
+            st.warning("🚀 **Enable AI Recommendations:** Add your Gemini API key in the sidebar to unlock:\n"
+                   "- 🩺 Disease-specific treatment plans\n"
+                   "- 💧 Detailed watering schedules\n"
+                   "- ☀️ Specific sunlight requirements\n"
+                   "- 🌱 Soil & fertilizer recommendations\n"
+                   "- 🐛 Pest & disease prevention\n"
+                   "- 📅 Seasonal care adjustments\n"
+                   "- 💬 Personalized analysis of your observations")
             
             if plant_prompt:
                 st.markdown("### 📝 Your Observations")
                 st.write(plant_prompt)
-                st.info("💡 Enable LLM integration to get personalized analysis of your observations.")
+                st.info("💡 Enable AI integration to get personalized analysis of your observations.")
         
         # Downloads
-        report = make_report_text(summary, metrics, meta, "Plant Identification")
-        st.download_button("Download report", data=report, file_name="plant_report.txt", mime="text/plain")
-        
         st.markdown("---")
-        if st.button("🔄 Analyze Another Photo", key="plant_reset"):
-            st.session_state.plant_analyzed = False
-            del st.session_state.plant_image
-            st.rerun()
+        report = make_report_text(summary, metrics, meta, "Plant Identification")
+        
+        col_dl, col_reset = st.columns([1, 1])
+        with col_dl:
+            st.download_button(
+                "📥 Download Report", 
+                data=report, 
+                file_name=f"plant_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt", 
+                mime="text/plain",
+                use_container_width=True
+            )
+        with col_reset:
+            if st.button("🔄 Analyze Another Plant", key="plant_reset", use_container_width=True):
+                st.session_state.plant_analyzed = False
+                del st.session_state.plant_image
+                st.rerun()

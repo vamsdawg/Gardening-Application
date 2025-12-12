@@ -24,8 +24,9 @@ class PlantCareLLM:
         plant_family: str,
         plant_genus: str,
         user_observation: Optional[str] = None,
-        season: Optional[str] = None,
-        confidence: Optional[float] = None
+        confidence: Optional[float] = None,
+        disease_name: Optional[str] = None,
+        disease_confidence: Optional[float] = None
     ) -> Dict:
         """
         Generate comprehensive plant care recommendations
@@ -36,23 +37,37 @@ class PlantCareLLM:
             plant_family: Plant family
             plant_genus: Plant genus
             user_observation: User's description of issues/concerns
-            season: Current season
-            confidence: Identification confidence (0-1)
+            confidence: Species identification confidence
+            disease_name: Disease name if detected
+            disease_confidence: Disease detection confidence
             
         Returns:
             Dictionary with care recommendations
         """
         
-        # Build the prompt
-        prompt = self._build_care_prompt(
-            plant_scientific_name,
-            plant_common_names,
-            plant_family,
-            plant_genus,
-            user_observation,
-            season,
-            confidence
-        )
+        # Build the appropriate prompt based on disease detection
+        if disease_name and disease_confidence and disease_confidence > 0.3:
+            # Disease detected - use treatment-focused prompt
+            prompt = self._build_diseased_plant_prompt(
+                plant_scientific_name,
+                plant_common_names,
+                plant_family,
+                plant_genus,
+                disease_name,
+                disease_confidence,
+                user_observation,
+                confidence
+            )
+        else:
+            # No disease - use general care prompt
+            prompt = self._build_healthy_plant_prompt(
+                plant_scientific_name,
+                plant_common_names,
+                plant_family,
+                plant_genus,
+                user_observation,
+                confidence
+            )
         
         try:
             # Generate response
@@ -74,21 +89,96 @@ class PlantCareLLM:
                 'message': f'Error generating recommendations: {str(e)}'
             }
     
-    def _build_care_prompt(
+    def _build_diseased_plant_prompt(
+        self,
+        scientific_name: str,
+        common_names: list,
+        family: str,
+        genus: str,
+        disease_name: str,
+        disease_confidence: float,
+        user_observation: Optional[str],
+        species_confidence: Optional[float]
+    ) -> str:
+        """Build treatment-focused prompt for diseased plants"""
+        
+        common_names_str = ', '.join(common_names[:3]) if common_names else 'None available'
+        
+        prompt = f"""You are a plant pathologist and disease specialist. A plant disease has been DETECTED in the uploaded image.
+
+PLANT IDENTIFICATION:
+- Scientific Name: {scientific_name}
+- Common Names: {common_names_str}
+- Family: {family}
+- Genus: {genus}
+"""
+        
+        if species_confidence:
+            prompt += f"- Species Confidence: {species_confidence*100:.1f}%\n"
+        
+        prompt += f"""
+⚠️ DISEASE DETECTED:
+- Disease/Issue: {disease_name}
+- Detection Confidence: {disease_confidence*100:.1f}%
+"""
+        
+        if user_observation:
+            prompt += f"\nUSER'S OBSERVATIONS:\n{user_observation}\n"
+        
+        prompt += f"""
+
+IMPORTANT: This plant has a CONFIRMED health issue. Be EXTREMELY CONCISE.
+
+Provide BRIEF treatment advice (EXACTLY 3 bullets per section, short sentences):
+
+1. **🔍 Issue**
+   - What: {disease_name} in one sentence
+   - Severity: minor/moderate/serious for {scientific_name}
+   - Spreads: yes/no
+
+2. **🚨 Do Now** (next 24-48 hours)
+   - [Critical action 1]
+   - [Critical action 2]
+   - [Critical action 3]
+
+3. **💊 Treatment**
+   - Product 1: [name, $price]
+   - Product 2: [name, $price]
+   - How: [brief application method]
+
+4. **📅 Recovery**
+   - Timeline: [X weeks]
+   - Good sign 1: [what to look for]
+   - Good sign 2: [what to look for]
+
+5. **🛡️ Prevent**
+   - [Top prevention tip]
+   - [Environmental change needed]
+   - [Ongoing maintenance]
+
+STRICT RULES: 
+- Each bullet = ONE short sentence (max 10 words)
+- EXACTLY 3 bullets per section
+- NO explanations or theory
+- Action words only
+"""
+        
+        return prompt
+    
+    def _build_healthy_plant_prompt(
         self,
         scientific_name: str,
         common_names: list,
         family: str,
         genus: str,
         user_observation: Optional[str],
-        season: Optional[str],
         confidence: Optional[float]
     ) -> str:
-        """Build a comprehensive prompt for plant care recommendations"""
+        """Build care-focused prompt for healthy plants"""
         
         common_names_str = ', '.join(common_names[:3]) if common_names else 'None available'
         
-        prompt = f"""You are an expert horticulturist, certified arborist, and plant care specialist with deep knowledge of plant physiology, soil science, pathology, and environmental stressors. Your job is to provide thorough, actionable, and scientifically grounded plant-care recommendations.
+        prompt = f"""You are an expert horticulturist. The user has uploaded an image of their plant seeking care advice.
 
 PLANT IDENTIFICATION:
 - Scientific Name: {scientific_name}
@@ -100,49 +190,57 @@ PLANT IDENTIFICATION:
         if confidence:
             prompt += f"- Identification Confidence: {confidence*100:.1f}%\n"
         
-        if season:
-            prompt += f"\nCURRENT CONTEXT:\n- Season: {season.capitalize()}\n"
-        
         if user_observation:
-            prompt += f"\nUSER'S CONCERN:\n{user_observation}\n"
-            prompt += f"\nPlease address this specific concern in your recommendations.\n"
+            prompt += f"\nUSER'S QUESTION/CONCERN:\n{user_observation}\n"
         
         prompt += """
-PROVIDE CONCISE CARE RECOMMENDATIONS (keep it brief and scannable):
 
-1. **Plant Overview** (1-2 sentences only)
+✅ NO DISEASES DETECTED. Be EXTREMELY CONCISE.
 
-2. **💧 Watering**
-   - How often and how much
-   - One key tip
+Provide care advice (EXACTLY 3 bullets per section, short sentences):
 
-3. **☀️ Light & Location**
-   - Best placement (full sun/shade/etc.)
-   - Hours of light needed
+1. **💧 Water**
+   - Frequency: [how often]
+   - Amount: [how much]
+   - Tip: [one key mistake to avoid]
 
-4. **🌱 Soil & Feeding**
-   - Soil type
-   - Fertilizer (yes/no and frequency)
+2. **☀️ Light**
+   - Location: [ideal spot]
+   - Hours: [number needed]
+   - Warning: [sign of too much/little]
 
-5. **⚠️ Watch Out For**
-   - Top 2 common problems for this plant
-   - Quick fix for each
+3. **🌱 Soil & Feed**
+   - Soil: [type needed]
+   - Fertilizer: [schedule]
+   - Ratio: [NPK if specific, or frequency]
+
+4. **⚠️ Watch For**
+   - Problem 1: [name + quick fix]
+   - Problem 2: [name + quick fix]
+   - Problem 3: [name + quick fix]
 """
         
         if user_observation:
             prompt += f"""
-6. **🔧 Your Concern: "{user_observation}"**
-   - Likely cause
-   - What to do now (2-3 action steps max)
+5. **🔧 Your Question**
+   "{user_observation}"
+   - [Brief answer in 3 bullets max]
 """
         else:
-            prompt += """
-6. **💡 Key Tips**
-   - 3 essential tips (one sentence each)
+            prompt += f"""
+5. **💡 Quick Tips**
+   - [Essential tip 1]
+   - [Essential tip 2]
+   - [Essential tip 3]
 """
         
         prompt += """
-Keep it SHORT and practical. Use bullet points. No long paragraphs. Focus on what the user needs to DO, not botanical details.
+
+STRICT RULES:
+- Each bullet = ONE short sentence (max 10 words)
+- EXACTLY 3 bullets per section
+- NO long explanations
+- Direct and actionable only
 """
         
         return prompt
@@ -160,8 +258,7 @@ Keep it SHORT and practical. Use bullet points. No long paragraphs. Focus on wha
         self,
         plant_scientific_name: str,
         plant_common_names: list,
-        symptoms: str,
-        season: Optional[str] = None
+        symptoms: str
     ) -> Dict:
         """
         Generate a plant problem diagnosis
@@ -170,7 +267,6 @@ Keep it SHORT and practical. Use bullet points. No long paragraphs. Focus on wha
             plant_scientific_name: Scientific name
             plant_common_names: Common names
             symptoms: Description of the problem
-            season: Current season
             
         Returns:
             Dictionary with diagnosis and treatment
@@ -181,7 +277,6 @@ Keep it SHORT and practical. Use bullet points. No long paragraphs. Focus on wha
         prompt = f"""You are a plant pathologist diagnosing plant problems.
 
 PLANT: {plant_scientific_name} ({common_names_str})
-SEASON: {season.capitalize() if season else 'Unknown'}
 
 SYMPTOMS REPORTED:
 {symptoms}
@@ -236,15 +331,14 @@ def test_gemini_integration(api_key: str):
     # Initialize LLM
     llm = PlantCareLLM(api_key)
     
-    # Test plant care recommendations
-    print("\n1. Testing Plant Care Recommendations...")
+    # Test 1: Healthy plant care
+    print("\n1. Testing Healthy Plant Care Recommendations...")
     result = llm.generate_plant_care_recommendations(
         plant_scientific_name="Mentha spicata",
         plant_common_names=["Spearmint", "Garden Mint"],
         plant_family="Lamiaceae",
         plant_genus="Mentha",
-        user_observation="I noticed some brown spots on the leaf edges",
-        season="summer",
+        user_observation="I want to keep my plant healthy",
         confidence=0.95
     )
     
@@ -257,13 +351,33 @@ def test_gemini_integration(api_key: str):
     
     print("\n" + "=" * 60)
     
+    # Test 2: Diseased plant treatment
+    print("\n2. Testing Diseased Plant Treatment Recommendations...")
+    result = llm.generate_plant_care_recommendations(
+        plant_scientific_name="Solanum lycopersicum",
+        plant_common_names=["Tomato", "Garden Tomato"],
+        plant_family="Solanaceae",
+        plant_genus="Solanum",
+        disease_name="Powdery Mildew",
+        disease_confidence=0.85,
+        confidence=0.92
+    )
+    
+    if result['success']:
+        print("✅ SUCCESS!")
+        print("\nTreatment Plan:")
+        print(result['recommendations'])
+    else:
+        print(f"❌ ERROR: {result['error']}")
+    
+    print("\n" + "=" * 60)
+    
     # Test diagnosis
     print("\n2. Testing Problem Diagnosis...")
     diagnosis = llm.generate_diagnosis(
         plant_scientific_name="Mentha spicata",
         plant_common_names=["Spearmint"],
-        symptoms="Leaves are turning yellow and have small brown spots",
-        season="summer"
+        symptoms="Leaves are turning yellow and have small brown spots"
     )
     
     if diagnosis['success']:
