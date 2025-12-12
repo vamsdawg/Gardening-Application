@@ -257,8 +257,8 @@ PROVIDE BRIEF LAWN CARE RECOMMENDATIONS using this specific Markdown format:
 
 RECOMMEND A SPECIFIC PRODUCT (Fertilizer, Weed Killer, or Seed):
 - Choose a real product available at Lowe's or Home Depot.
-- If weeds are detected, prioritize a weed control product safe for {grass_type}.
-- If bald spots are high, recommend a seed mix suitable for {grass_type}.
+- If "Lots of Weeds Detected", prioritize a weed control product safe for {grass_type}.
+- If bald spots are above 30%, recommend a seed mix suitable for {grass_type}.
 - Otherwise, recommend a fertilizer.
 
 CRITICAL: You must ONLY recommend products that are available at Lowe's or Home Depot.
