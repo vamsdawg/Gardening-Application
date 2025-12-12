@@ -154,7 +154,7 @@ class PlantNetAPI:
         
         Args:
             image_array: numpy array of the image (RGB)
-            organs: plant organ type ('leaf', 'flower', 'fruit', 'bark', or 'auto')
+            organs: plant organ type (DEPRECATED - disease API auto-detects organ)
             num_results: number of top results to return (default: 5)
             include_images: whether to include related disease images (default: False)
             
@@ -173,14 +173,18 @@ class PlantNetAPI:
             image.save(img_byte_arr, format='JPEG')
             img_byte_arr.seek(0)
             
-            # Prepare the request
+            # Prepare the request - organs should NOT be in params for disease API
             files = [('images', ('image.jpg', img_byte_arr, 'image/jpeg'))]
+            
+            # Only include API key and optional parameters in query string
             params = {
                 'api-key': self.api_key,
-                'organs': organs,
                 'include-related-images': 'true' if include_images else 'false',
                 'nb-results': num_results
             }
+            
+            # Note: organs parameter is not supported by disease API
+            # It auto-detects the organ type
             
             # Make the API request
             response = requests.post(
