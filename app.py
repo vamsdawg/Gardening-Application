@@ -871,6 +871,15 @@ elif page == "Plant Care":
         
         with col2:
             # Health Status Card - Enhanced visual design
+            
+            # DEBUG: Show disease data status
+            if disease_data is None:
+                st.warning("🔧 DEBUG: disease_data is None")
+            elif not disease_data.get('success'):
+                st.warning(f"🔧 DEBUG: Disease API failed - {disease_data.get('message', 'Unknown error')}")
+            else:
+                st.info(f"🔧 DEBUG: has_disease = {disease_data.get('has_disease')}")
+            
             if disease_data and disease_data.get('success'):
                 st.markdown("### 🏥 Health Status")
                 
