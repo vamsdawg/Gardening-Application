@@ -135,41 +135,35 @@ PLANT IDENTIFICATION:
         
         prompt += f"""
 
-IMPORTANT: This plant has a CONFIRMED health issue. Focus on TREATMENT and RECOVERY, not general care.
+IMPORTANT: This plant has a CONFIRMED health issue. Focus on TREATMENT and RECOVERY with CONCISE, actionable advice.
 
-Provide a TREATMENT-FOCUSED response:
+Provide a BRIEF treatment-focused response (3-5 bullet points per section max):
 
-1. **🔍 What's Happening**
-   - Brief explanation of {disease_name} (2-3 sentences)
-   - How serious is this for {scientific_name}?
-   - Can it spread to other plants?
+1. **🔍 Issue Overview**
+   - What is {disease_name} (1 sentence)
+   - Severity for {scientific_name} (minor/moderate/serious)
+   - Can it spread? (yes/no)
 
-2. **🚨 IMMEDIATE ACTIONS** (Next 24-48 hours)
-   - Step 1: [Critical first action]
-   - Step 2: [Immediate containment/treatment]
-   - Step 3: [Prevent spread]
+2. **🚨 Immediate Actions** (Next 24-48 hours - max 3 steps)
+   - Most critical action first
+   - Containment/isolation steps
+   - Stop spread
 
-3. **💊 Treatment Plan** (This week)
-   - Recommended products (organic AND chemical options)
-   - How to apply and frequency
-   - Expected cost range
+3. **💊 Treatment** (This week)
+   - Top 2 product recommendations (name + price range)
+   - Application method (brief)
+   - Frequency
 
-4. **📅 Recovery Timeline**
-   - When to expect improvement
-   - Signs of recovery to watch for
-   - How long until fully healthy
+4. **📅 Recovery**
+   - Timeline: [X weeks]
+   - Key signs of improvement (2-3 points)
 
-5. **🛡️ Prevention** (After recovery)
-   - How to prevent recurrence
-   - Environmental changes needed
+5. **🛡️ Prevention** (After recovery - max 3 tips)
+   - Most important preventive measure
+   - Environmental changes
    - Maintenance routine
 
-6. **⚠️ When to Give Up**
-   - Red flags that treatment isn't working
-   - When to remove the plant to protect others
-
-Keep it ACTION-ORIENTED. Tell them exactly what to BUY and DO, not just botanical theory.
-Be honest about severity - don't sugarcoat if it's serious.
+Keep responses SHORT. Use bullet points. No lengthy explanations.
 """
         
         return prompt
@@ -210,52 +204,44 @@ PLANT IDENTIFICATION:
 
 ✅ NO MAJOR DISEASES DETECTED in the image.
 
-However, users often upload plant photos when they notice something unusual or want to prevent problems.
-Consider what issues are MOST COMMON for {scientific_name} during {season if season else 'this time'}.
+Provide CONCISE preventive care advice (3-4 bullet points per section max):
 
-Provide PREVENTIVE and PROACTIVE care advice:
-
-1. **Plant Overview** (1-2 sentences)
-
-2. **💧 Watering**
-   - Frequency for {season if season else 'current conditions'}
-   - How much and best method
+1. **💧 Watering** ({season if season else 'current season'})
+   - Frequency and amount
+   - Best method
    - One key mistake to avoid
 
-3. **☀️ Light & Location**
-   - Ideal placement
-   - Hours of light needed
-   - Signs it's getting too much/little
+2. **☀️ Light**
+   - Ideal location
+   - Hours needed
+   - Signs of too much/little light
 
-4. **🌱 Soil & Feeding**
-   - Best soil type
+3. **🌱 Soil & Feeding**
+   - Soil type
    - Fertilizer schedule for {season if season else 'now'}
-   - NPK ratio if specific
+   - NPK ratio (if specific)
 
-5. **⚠️ Watch Out For** (Top 3 problems for THIS species in {season if season else 'general'})
-   - Problem 1: [Name] - Early signs - Quick fix
-   - Problem 2: [Name] - Early signs - Quick fix
-   - Problem 3: [Name] - Early signs - Quick fix
+4. **⚠️ Common Issues** (Top 3 for {scientific_name} in {season if season else 'general'})
+   - Issue 1: [Name] - Early signs - Quick fix
+   - Issue 2: [Name] - Early signs - Quick fix
+   - Issue 3: [Name] - Early signs - Quick fix
 """
         
         if user_observation:
             prompt += f"""
-6. **🔧 Addressing: "{user_observation}"**
-   - Most likely explanation
+5. **🔧 Your Question: "{user_observation}"**
+   - Brief answer (2-3 bullet points max)
    - Is this normal or concerning?
-   - What to do (2-3 action steps)
+   - What to do
 """
         else:
             prompt += f"""
-6. **💡 Pro Tips for {scientific_name}**
-   - Tip 1: [Season-specific advice]
-   - Tip 2: [Common beginner mistake to avoid]
-   - Tip 3: [How to know plant is thriving]
+5. **💡 Quick Tips**
+   - Top 3 tips for {scientific_name} success (one line each)
 """
         
         prompt += """
-Keep it PRACTICAL and PREVENTIVE. Focus on keeping this plant healthy and catching problems early.
-Use bullet points. No long paragraphs.
+Keep it BRIEF and PRACTICAL. Bullet points only. No long paragraphs or botanical theory.
 """
         
         return prompt
