@@ -24,7 +24,6 @@ class PlantCareLLM:
         plant_family: str,
         plant_genus: str,
         user_observation: Optional[str] = None,
-        season: Optional[str] = None,
         confidence: Optional[float] = None,
         disease_name: Optional[str] = None,
         disease_confidence: Optional[float] = None
@@ -38,7 +37,6 @@ class PlantCareLLM:
             plant_family: Plant family
             plant_genus: Plant genus
             user_observation: User's description of issues/concerns
-            season: Current season
             confidence: Species identification confidence
             disease_name: Disease name if detected
             disease_confidence: Disease detection confidence
@@ -58,7 +56,6 @@ class PlantCareLLM:
                 disease_name,
                 disease_confidence,
                 user_observation,
-                season,
                 confidence
             )
         else:
@@ -69,7 +66,6 @@ class PlantCareLLM:
                 plant_family,
                 plant_genus,
                 user_observation,
-                season,
                 confidence
             )
         
@@ -102,7 +98,6 @@ class PlantCareLLM:
         disease_name: str,
         disease_confidence: float,
         user_observation: Optional[str],
-        season: Optional[str],
         species_confidence: Optional[float]
     ) -> str:
         """Build treatment-focused prompt for diseased plants"""
@@ -126,9 +121,6 @@ PLANT IDENTIFICATION:
 - Disease/Issue: {disease_name}
 - Detection Confidence: {disease_confidence*100:.1f}%
 """
-        
-        if season:
-            prompt += f"- Current Season: {season.capitalize()}\n"
         
         if user_observation:
             prompt += f"\nUSER'S OBSERVATIONS:\n{user_observation}\n"
@@ -180,7 +172,6 @@ STRICT RULES:
         family: str,
         genus: str,
         user_observation: Optional[str],
-        season: Optional[str],
         confidence: Optional[float]
     ) -> str:
         """Build care-focused prompt for healthy plants"""
@@ -199,20 +190,17 @@ PLANT IDENTIFICATION:
         if confidence:
             prompt += f"- Identification Confidence: {confidence*100:.1f}%\n"
         
-        if season:
-            prompt += f"\nCURRENT CONTEXT:\n- Season: {season.capitalize()}\n"
-        
         if user_observation:
             prompt += f"\nUSER'S QUESTION/CONCERN:\n{user_observation}\n"
         
-        prompt += f"""
+        prompt += """
 
 ✅ NO DISEASES DETECTED. Be EXTREMELY CONCISE.
 
 Provide care advice (EXACTLY 3 bullets per section, short sentences):
 
 1. **💧 Water**
-   - Frequency: [how often in {season if season else 'now'}]
+   - Frequency: [how often]
    - Amount: [how much]
    - Tip: [one key mistake to avoid]
 
@@ -223,10 +211,10 @@ Provide care advice (EXACTLY 3 bullets per section, short sentences):
 
 3. **🌱 Soil & Feed**
    - Soil: [type needed]
-   - Fertilizer: [schedule for {season if season else 'now'}]
+   - Fertilizer: [schedule]
    - Ratio: [NPK if specific, or frequency]
 
-4. **⚠️ Watch For** ({season if season else 'year-round'})
+4. **⚠️ Watch For**
    - Problem 1: [name + quick fix]
    - Problem 2: [name + quick fix]
    - Problem 3: [name + quick fix]
@@ -270,8 +258,7 @@ STRICT RULES:
         self,
         plant_scientific_name: str,
         plant_common_names: list,
-        symptoms: str,
-        season: Optional[str] = None
+        symptoms: str
     ) -> Dict:
         """
         Generate a plant problem diagnosis
@@ -280,7 +267,6 @@ STRICT RULES:
             plant_scientific_name: Scientific name
             plant_common_names: Common names
             symptoms: Description of the problem
-            season: Current season
             
         Returns:
             Dictionary with diagnosis and treatment
@@ -291,7 +277,6 @@ STRICT RULES:
         prompt = f"""You are a plant pathologist diagnosing plant problems.
 
 PLANT: {plant_scientific_name} ({common_names_str})
-SEASON: {season.capitalize() if season else 'Unknown'}
 
 SYMPTOMS REPORTED:
 {symptoms}
@@ -354,7 +339,6 @@ def test_gemini_integration(api_key: str):
         plant_family="Lamiaceae",
         plant_genus="Mentha",
         user_observation="I want to keep my plant healthy",
-        season="summer",
         confidence=0.95
     )
     
@@ -376,7 +360,6 @@ def test_gemini_integration(api_key: str):
         plant_genus="Solanum",
         disease_name="Powdery Mildew",
         disease_confidence=0.85,
-        season="summer",
         confidence=0.92
     )
     
@@ -394,8 +377,7 @@ def test_gemini_integration(api_key: str):
     diagnosis = llm.generate_diagnosis(
         plant_scientific_name="Mentha spicata",
         plant_common_names=["Spearmint"],
-        symptoms="Leaves are turning yellow and have small brown spots",
-        season="summer"
+        symptoms="Leaves are turning yellow and have small brown spots"
     )
     
     if diagnosis['success']:

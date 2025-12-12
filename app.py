@@ -328,7 +328,7 @@ Example JSON format:
             'error': str(e)
         }
 
-def plant_rule_engine(plant_name, plant_data=None, user_observation="", season="Spring", disease_data=None):
+def plant_rule_engine(plant_name, plant_data=None, user_observation="", disease_data=None):
     """Generate plant care recommendations using LLM or fallback"""
     if not USE_LLM or not GEMINI_API_KEY:
         return f"Plant identified as: **{plant_name.replace('_', ' ').title()}**\n\nDetailed care recommendations will be available with LLM integration."
@@ -369,7 +369,6 @@ def plant_rule_engine(plant_name, plant_data=None, user_observation="", season="
             plant_family=family,
             plant_genus=genus,
             user_observation=user_observation,
-            season=season,
             confidence=confidence,
             disease_name=disease_name,
             disease_confidence=disease_confidence
@@ -798,24 +797,12 @@ elif page == "Plant Care":
                 "user_notes": plant_prompt if plant_prompt else "None"
             }
             
-            # Determine current season (basic approximation)
-            current_month = datetime.now().month
-            if current_month in [3, 4, 5]:
-                season = "Spring"
-            elif current_month in [6, 7, 8]:
-                season = "Summer"
-            elif current_month in [9, 10, 11]:
-                season = "Fall"
-            else:
-                season = "Winter"
-            
             # Pass both species and disease data to rule engine for LLM
             plant_data = result if use_plantnet_now else None
             summary = plant_rule_engine(
                 plant_name if plant_name else "Unknown",
                 plant_data=plant_data,
                 user_observation=plant_prompt if plant_prompt else "",
-                season=season,
                 disease_data=disease_data
             )
         
@@ -964,7 +951,6 @@ elif page == "Plant Care":
                 with st.expander("ℹ️ Analysis Context"):
                     if disease_data and disease_data.get('has_disease'):
                         st.write("✓ Disease detection data analyzed")
-                        st.write(f"✓ Season: {season}")
                     if plant_prompt:
                         st.write("✓ Your observations incorporated")
                         st.caption(f'"{plant_prompt}"')
