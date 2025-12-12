@@ -135,35 +135,40 @@ PLANT IDENTIFICATION:
         
         prompt += f"""
 
-IMPORTANT: This plant has a CONFIRMED health issue. Focus on TREATMENT and RECOVERY with CONCISE, actionable advice.
+IMPORTANT: This plant has a CONFIRMED health issue. Be EXTREMELY CONCISE.
 
-Provide a BRIEF treatment-focused response (3-5 bullet points per section max):
+Provide BRIEF treatment advice (EXACTLY 3 bullets per section, short sentences):
 
-1. **🔍 Issue Overview**
-   - What is {disease_name} (1 sentence)
-   - Severity for {scientific_name} (minor/moderate/serious)
-   - Can it spread? (yes/no)
+1. **🔍 Issue**
+   - What: {disease_name} in one sentence
+   - Severity: minor/moderate/serious for {scientific_name}
+   - Spreads: yes/no
 
-2. **🚨 Immediate Actions** (Next 24-48 hours - max 3 steps)
-   - Most critical action first
-   - Containment/isolation steps
-   - Stop spread
+2. **🚨 Do Now** (next 24-48 hours)
+   - [Critical action 1]
+   - [Critical action 2]
+   - [Critical action 3]
 
-3. **💊 Treatment** (This week)
-   - Top 2 product recommendations (name + price range)
-   - Application method (brief)
-   - Frequency
+3. **💊 Treatment**
+   - Product 1: [name, $price]
+   - Product 2: [name, $price]
+   - How: [brief application method]
 
 4. **📅 Recovery**
    - Timeline: [X weeks]
-   - Key signs of improvement (2-3 points)
+   - Good sign 1: [what to look for]
+   - Good sign 2: [what to look for]
 
-5. **🛡️ Prevention** (After recovery - max 3 tips)
-   - Most important preventive measure
-   - Environmental changes
-   - Maintenance routine
+5. **🛡️ Prevent**
+   - [Top prevention tip]
+   - [Environmental change needed]
+   - [Ongoing maintenance]
 
-Keep responses SHORT. Use bullet points. No lengthy explanations.
+STRICT RULES: 
+- Each bullet = ONE short sentence (max 10 words)
+- EXACTLY 3 bullets per section
+- NO explanations or theory
+- Action words only
 """
         
         return prompt
@@ -202,46 +207,52 @@ PLANT IDENTIFICATION:
         
         prompt += f"""
 
-✅ NO MAJOR DISEASES DETECTED in the image.
+✅ NO DISEASES DETECTED. Be EXTREMELY CONCISE.
 
-Provide CONCISE preventive care advice (3-4 bullet points per section max):
+Provide care advice (EXACTLY 3 bullets per section, short sentences):
 
-1. **💧 Watering** ({season if season else 'current season'})
-   - Frequency and amount
-   - Best method
-   - One key mistake to avoid
+1. **💧 Water**
+   - Frequency: [how often in {season if season else 'now'}]
+   - Amount: [how much]
+   - Tip: [one key mistake to avoid]
 
 2. **☀️ Light**
-   - Ideal location
-   - Hours needed
-   - Signs of too much/little light
+   - Location: [ideal spot]
+   - Hours: [number needed]
+   - Warning: [sign of too much/little]
 
-3. **🌱 Soil & Feeding**
-   - Soil type
-   - Fertilizer schedule for {season if season else 'now'}
-   - NPK ratio (if specific)
+3. **🌱 Soil & Feed**
+   - Soil: [type needed]
+   - Fertilizer: [schedule for {season if season else 'now'}]
+   - Ratio: [NPK if specific, or frequency]
 
-4. **⚠️ Common Issues** (Top 3 for {scientific_name} in {season if season else 'general'})
-   - Issue 1: [Name] - Early signs - Quick fix
-   - Issue 2: [Name] - Early signs - Quick fix
-   - Issue 3: [Name] - Early signs - Quick fix
+4. **⚠️ Watch For** ({season if season else 'year-round'})
+   - Problem 1: [name + quick fix]
+   - Problem 2: [name + quick fix]
+   - Problem 3: [name + quick fix]
 """
         
         if user_observation:
             prompt += f"""
-5. **🔧 Your Question: "{user_observation}"**
-   - Brief answer (2-3 bullet points max)
-   - Is this normal or concerning?
-   - What to do
+5. **🔧 Your Question**
+   "{user_observation}"
+   - [Brief answer in 3 bullets max]
 """
         else:
             prompt += f"""
 5. **💡 Quick Tips**
-   - Top 3 tips for {scientific_name} success (one line each)
+   - [Essential tip 1]
+   - [Essential tip 2]
+   - [Essential tip 3]
 """
         
         prompt += """
-Keep it BRIEF and PRACTICAL. Bullet points only. No long paragraphs or botanical theory.
+
+STRICT RULES:
+- Each bullet = ONE short sentence (max 10 words)
+- EXACTLY 3 bullets per section
+- NO long explanations
+- Direct and actionable only
 """
         
         return prompt
