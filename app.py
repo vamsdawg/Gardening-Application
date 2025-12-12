@@ -985,17 +985,6 @@ elif page == "Plant Care":
                 st.write(plant_prompt)
                 st.info("💡 Enable AI integration to get personalized analysis of your observations.")
         
-        # Summary metrics in columns
-        st.markdown("---")
-        st.markdown("### 📊 Analysis Summary")
-        
-        metric_cols = st.columns(len(metrics))
-        for idx, (key, value) in enumerate(metrics.items()):
-            with metric_cols[idx]:
-                # Format the metric name nicely
-                label = key.replace('_', ' ').title()
-                st.metric(label=label, value=value)
-        
         # Downloads
         st.markdown("---")
         report = make_report_text(summary, metrics, meta, "Plant Identification")
